@@ -1,0 +1,872 @@
+{
+  "name": "MISS Legal AI - Voice Session Management",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "voice-session",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "v1s1-session-webhook",
+      "name": "Voice Session Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "voice-session-nigeria"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "sessionId",
+              "value": "={{ $json.session_id || $generateId() }}"
+            },
+            {
+              "name": "userId",
+              "value": "={{ $json.user_id }}"
+            },
+            {
+              "name": "action",
+              "value": "={{ $json.action }}"
+            },
+            {
+              "name": "audioData",
+              "value": "={{ $json.audio_data }}"
+            },
+            {
+              "name": "transcript",
+              "value": "={{ $json.transcript }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $json.language || 'english' }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "v1s2-extract-session-data",
+      "name": "Extract Session Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.action }}",
+              "value2": "start_session"
+            }
+          ]
+        }
+      },
+      "id": "v1s3-check-action-type",
+      "name": "Check Action Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/voice_sessions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "={{ $json.sessionId }}"
+            },
+            {
+              "name": "user_id",
+              "value": "={{ $json.userId }}"
+            },
+            {
+              "name": "status",
+              "value": "active"
+            },
+            {
+              "name": "language",
+              "value": "={{ $json.language }}"
+            },
+            {
+              "name": "start_time",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "transcript",
+              "value": ""
+            },
+            {
+              "name": "metadata",
+              "value": "={{ JSON.stringify({ initial_action: 'start_session', client_info: $json.client_info || {} }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "v1s4-create-session-record",
+      "name": "Create Session Record",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        900,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.BACKEND_API_URL }}/api/voice/process",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.BACKEND_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "sessionId",
+              "value": "={{ $json.sessionId }}"
+            },
+            {
+              "name": "audioData",
+              "value": "={{ $json.audioData }}"
+            },
+            {
+              "name": "transcript",
+              "value": "={{ $json.transcript }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $json.language }}"
+            },
+            {
+              "name": "userId",
+              "value": "={{ $json.userId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "v1s5-process-voice-input",
+      "name": "Process Voice Input",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        900,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "processedTranscript",
+              "value": "={{ $json.transcript }}"
+            },
+            {
+              "name": "detectedIntent",
+              "value": "={{ $json.intent }}"
+            },
+            {
+              "name": "confidence",
+              "value": "={{ $json.confidence }}"
+            },
+            {
+              "name": "emergencyDetected",
+              "value": "={{ $json.emergency_detected }}"
+            },
+            {
+              "name": "emergencyType",
+              "value": "={{ $json.emergency_type }}"
+            },
+            {
+              "name": "legalIntent",
+              "value": "={{ $json.legal_intent }}"
+            },
+            {
+              "name": "documentType",
+              "value": "={{ $json.document_type }}"
+            },
+            {
+              "name": "extractedData",
+              "value": "={{ JSON.stringify($json.extracted_data || {}) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "v1s6-extract-processing-results",
+      "name": "Extract Processing Results",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.emergencyDetected === 'true' || $json.emergencyDetected === true }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "v1s7-check-emergency",
+      "name": "Check Emergency Detection",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "https://n8n.odia.ltd/webhook/emergency-response",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-N8N-Webhook-Secret",
+              "value": "{{ $env.N8N_WEBHOOK_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "sessionId",
+              "value": "={{ $json.sessionId }}"
+            },
+            {
+              "name": "userId",
+              "value": "={{ $json.userId }}"
+            },
+            {
+              "name": "emergencyType",
+              "value": "={{ $json.emergencyType }}"
+            },
+            {
+              "name": "transcript",
+              "value": "={{ $json.processedTranscript }}"
+            },
+            {
+              "name": "confidence",
+              "value": "={{ $json.confidence }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $json.language }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "v1s8-trigger-emergency-workflow",
+      "name": "Trigger Emergency Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.legalIntent }}",
+              "value2": "document_generation"
+            }
+          ]
+        }
+      },
+      "id": "v1s9-check-legal-intent",
+      "name": "Check Legal Intent",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "https://n8n.odia.ltd/webhook/document-generation",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-N8N-Webhook-Secret",
+              "value": "{{ $env.N8N_WEBHOOK_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "sessionId",
+              "value": "={{ $json.sessionId }}"
+            },
+            {
+              "name": "userId",
+              "value": "={{ $json.userId }}"
+            },
+            {
+              "name": "documentType",
+              "value": "={{ $json.documentType }}"
+            },
+            {
+              "name": "transcript",
+              "value": "={{ $json.processedTranscript }}"
+            },
+            {
+              "name": "extractedData",
+              "value": "={{ $json.extractedData }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $json.language }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "v1s10-trigger-document-workflow",
+      "name": "Trigger Document Generation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1560,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.legalIntent }}",
+              "value2": "lawyer_consultation"
+            }
+          ]
+        }
+      },
+      "id": "v1s11-check-lawyer-intent",
+      "name": "Check Lawyer Intent",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "https://n8n.odia.ltd/webhook/lawyer-escalation",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-N8N-Webhook-Secret",
+              "value": "{{ $env.N8N_WEBHOOK_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "sessionId",
+              "value": "={{ $json.sessionId }}"
+            },
+            {
+              "name": "userId",
+              "value": "={{ $json.userId }}"
+            },
+            {
+              "name": "legalArea",
+              "value": "={{ $json.extractedData.legal_area || 'general' }}"
+            },
+            {
+              "name": "urgency",
+              "value": "={{ $json.extractedData.urgency || 'normal' }}"
+            },
+            {
+              "name": "transcript",
+              "value": "={{ $json.processedTranscript }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $json.language }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "v1s12-trigger-lawyer-workflow",
+      "name": "Trigger Lawyer Escalation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1560,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/voice_sessions?id=eq.{{ $json.sessionId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "transcript",
+              "value": "={{ $json.processedTranscript }}"
+            },
+            {
+              "name": "intent",
+              "value": "={{ $json.detectedIntent }}"
+            },
+            {
+              "name": "confidence",
+              "value": "={{ parseFloat($json.confidence) || 0.0 }}"
+            },
+            {
+              "name": "status",
+              "value": "processing"
+            },
+            {
+              "name": "metadata",
+              "value": "={{ JSON.stringify({ emergency_detected: $json.emergencyDetected, legal_intent: $json.legalIntent, document_type: $json.documentType, last_updated: new Date().toISOString() }) }}"
+            },
+            {
+              "name": "updated_at",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "v1s13-update-session-record",
+      "name": "Update Session Record",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1780,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/session_analytics",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "session_id",
+              "value": "={{ $json.sessionId }}"
+            },
+            {
+              "name": "user_id",
+              "value": "={{ $json.userId }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $json.language }}"
+            },
+            {
+              "name": "intent_detected",
+              "value": "={{ $json.detectedIntent }}"
+            },
+            {
+              "name": "confidence_score",
+              "value": "={{ parseFloat($json.confidence) || 0.0 }}"
+            },
+            {
+              "name": "emergency_detected",
+              "value": "={{ $json.emergencyDetected === 'true' || $json.emergencyDetected === true }}"
+            },
+            {
+              "name": "processing_time_ms",
+              "value": "={{ $json.processing_time || 0 }}"
+            },
+            {
+              "name": "created_at",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "v1s14-log-session-analytics",
+      "name": "Log Session Analytics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2000,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: true,\n  sessionId: $json.sessionId,\n  status: 'processing',\n  intent: $json.detectedIntent,\n  confidence: $json.confidence,\n  emergencyDetected: $json.emergencyDetected,\n  nextAction: $json.emergencyDetected === 'true' ? 'emergency_response' : $json.legalIntent === 'document_generation' ? 'document_generation' : $json.legalIntent === 'lawyer_consultation' ? 'lawyer_escalation' : 'continue_conversation',\n  message: $json.language === 'yoruba' ? 'Gbogbo ohun ti o so ni a gbo' : $json.language === 'hausa' ? 'Mun ji duk abin da ka ce' : $json.language === 'igbo' ? 'Anyi nuru ihe niile i kwuru' : 'Your voice input has been processed successfully'\n}) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "v1s15-session-response",
+      "name": "Session Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2220,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, error: 'Invalid session action or missing required data' }) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "v1s16-error-response",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        900,
+        600
+      ]
+    }
+  ],
+  "connections": {
+    "Voice Session Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Session Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Session Data": {
+      "main": [
+        [
+          {
+            "node": "Check Action Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Action Type": {
+      "main": [
+        [
+          {
+            "node": "Create Session Record",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process Voice Input",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Session Record": {
+      "main": [
+        [
+          {
+            "node": "Session Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Voice Input": {
+      "main": [
+        [
+          {
+            "node": "Extract Processing Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Processing Results": {
+      "main": [
+        [
+          {
+            "node": "Check Emergency Detection",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Legal Intent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Lawyer Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Emergency Detection": {
+      "main": [
+        [
+          {
+            "node": "Trigger Emergency Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Check Legal Intent": {
+      "main": [
+        [
+          {
+            "node": "Trigger Document Generation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Check Lawyer Intent": {
+      "main": [
+        [
+          {
+            "node": "Trigger Lawyer Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Trigger Emergency Workflow": {
+      "main": [
+        [
+          {
+            "node": "Update Session Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Document Generation": {
+      "main": [
+        [
+          {
+            "node": "Update Session Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Lawyer Escalation": {
+      "main": [
+        [
+          {
+            "node": "Update Session Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Session Record": {
+      "main": [
+        [
+          {
+            "node": "Log Session Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Session Analytics": {
+      "main": [
+        [
+          {
+            "node": "Session Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "1",
+  "meta": {
+    "instanceId": "voice-crm-nigeria"
+  },
+  "id": "miss-legal-ai-voice-session-management",
+  "tags": [
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "voice-processing",
+      "name": "Voice Processing"
+    },
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "miss-legal-ai",
+      "name": "MISS Legal AI"
+    }
+  ]
+}

@@ -1,0 +1,170 @@
+{
+  "test_execution": {
+    "started_at": "2025-06-01T07:13:50.646Z",
+    "completed_at": "2025-06-01T07:14:16.893Z",
+    "total_duration_ms": 26247,
+    "duration_formatted": "26s"
+  },
+  "summary": {
+    "overall_status": "healthy",
+    "test_suites": {
+      "total": 3,
+      "passed": 3,
+      "failed": 0,
+      "success_rate": "100.0%"
+    },
+    "individual_tests": {
+      "total": 20,
+      "passed": 18,
+      "failed": 2,
+      "success_rate": "90.0%"
+    }
+  },
+  "system_health": {
+    "emergency_system": "healthy",
+    "payment_system": "healthy",
+    "voice_ai_system": "healthy",
+    "overall_status": "healthy"
+  },
+  "component_results": {
+    "emergency": {
+      "passed": true,
+      "accuracy": "92.3",
+      "results": {
+        "total_tests": 6,
+        "passed": 5,
+        "failed": 1,
+        "language_breakdown": {
+          "english": {
+            "passed": 1,
+            "total": 1
+          },
+          "pidgin": {
+            "passed": 1,
+            "total": 1
+          },
+          "yoruba": {
+            "passed": 1,
+            "total": 1
+          },
+          "hausa": {
+            "passed": 1,
+            "total": 1
+          },
+          "igbo": {
+            "passed": 1,
+            "total": 1
+          }
+        }
+      }
+    },
+    "payment": {
+      "passed": true,
+      "success_rate": "98.5",
+      "results": {
+        "total_tests": 8,
+        "passed": 8,
+        "failed": 0,
+        "payment_method_results": {
+          "card": {
+            "passed": 2,
+            "total": 2
+          },
+          "bank_transfer": {
+            "passed": 2,
+            "total": 2
+          },
+          "ussd": {
+            "passed": 2,
+            "total": 2
+          },
+          "mobile_money": {
+            "passed": 2,
+            "total": 2
+          }
+        }
+      }
+    },
+    "voice": {
+      "passed": true,
+      "results": {
+        "total_tests": 6,
+        "passed": 5,
+        "failed": 1,
+        "language_performance": {
+          "english": {
+            "passed": 2,
+            "total": 2
+          },
+          "pidgin": {
+            "passed": 1,
+            "total": 1
+          },
+          "yoruba": {
+            "passed": 1,
+            "total": 1
+          },
+          "hausa": {
+            "passed": 1,
+            "total": 1
+          },
+          "igbo": {
+            "passed": 0,
+            "total": 1
+          }
+        }
+      },
+      "metrics": {
+        "transcription_accuracy": 0.887,
+        "intent_recognition_accuracy": 0.917,
+        "entity_extraction_accuracy": 0.823,
+        "average_latency": 1456,
+        "language_detection_accuracy": 0.95,
+        "emergency_detection_accuracy": 0.923
+      }
+    },
+    "api_endpoints": {
+      "passed": false,
+      "total": 7,
+      "working": 6,
+      "failed": 1
+    },
+    "database": {
+      "passed": true,
+      "total": 7,
+      "working": 7,
+      "failed": 0
+    },
+    "third_party": {
+      "passed": false,
+      "total": 7,
+      "working": 6,
+      "failed": 1
+    },
+    "nigerian_features": {
+      "passed": false,
+      "total": 8,
+      "working": 7,
+      "failed": 1
+    },
+    "security": {
+      "passed": false,
+      "total": 10,
+      "working": 9,
+      "failed": 1
+    },
+    "mobile_app": {
+      "passed": true,
+      "total": 10,
+      "working": 10,
+      "failed": 0
+    }
+  },
+  "recommendations": [],
+  "nigerian_market_readiness": {
+    "emergency_services": true,
+    "payment_methods": true,
+    "multi_language_support": true,
+    "legal_compliance": false
+  }
+}

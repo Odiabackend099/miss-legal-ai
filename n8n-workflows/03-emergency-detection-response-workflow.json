@@ -1,0 +1,761 @@
+{
+  "name": "MISS Legal AI - Emergency Detection & Response",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "emergency-response",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "emr1-emergency-webhook",
+      "name": "Emergency Detection Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "emergency-response-nigeria"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "sessionId",
+              "value": "={{ $json.sessionId }}"
+            },
+            {
+              "name": "userId",
+              "value": "={{ $json.userId }}"
+            },
+            {
+              "name": "emergencyType",
+              "value": "={{ $json.emergencyType }}"
+            },
+            {
+              "name": "transcript",
+              "value": "={{ $json.transcript }}"
+            },
+            {
+              "name": "confidence",
+              "value": "={{ $json.confidence }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $json.language || 'english' }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $json.timestamp || new Date().toISOString() }}"
+            },
+            {
+              "name": "location",
+              "value": "={{ $json.location }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "emr2-extract-emergency-data",
+      "name": "Extract Emergency Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ parseFloat($json.confidence) }}",
+              "operation": "largerEqual",
+              "value2": 0.7
+            }
+          ]
+        }
+      },
+      "id": "emr3-validate-confidence",
+      "name": "Validate Emergency Confidence",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/users?id=eq.{{ $json.userId }}&select=*,emergency_contacts(*)",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "emr4-get-user-contacts",
+      "name": "Get User & Emergency Contacts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        900,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/emergencies",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "={{ $randomString(16) }}"
+            },
+            {
+              "name": "user_id",
+              "value": "={{ $json.userId }}"
+            },
+            {
+              "name": "session_id",
+              "value": "={{ $json.sessionId }}"
+            },
+            {
+              "name": "emergency_type",
+              "value": "={{ $json.emergencyType }}"
+            },
+            {
+              "name": "transcript",
+              "value": "={{ $json.transcript }}"
+            },
+            {
+              "name": "confidence_score",
+              "value": "={{ parseFloat($json.confidence) }}"
+            },
+            {
+              "name": "location_data",
+              "value": "={{ JSON.stringify($json.location || {}) }}"
+            },
+            {
+              "name": "status",
+              "value": "active"
+            },
+            {
+              "name": "language",
+              "value": "={{ $json.language }}"
+            },
+            {
+              "name": "created_at",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "metadata",
+              "value": "={{ JSON.stringify({ original_session: $json.sessionId, detection_method: 'voice_analysis' }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "emr5-create-emergency-record",
+      "name": "Create Emergency Record",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        900,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "emr6-split-emergency-contacts",
+      "name": "Split Emergency Contacts",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "contactName",
+              "value": "={{ $json.name }}"
+            },
+            {
+              "name": "contactPhone",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "contactRelationship",
+              "value": "={{ $json.relationship }}"
+            },
+            {
+              "name": "emergencyMessage",
+              "value": "={% if $('Extract Emergency Data').item.json.language === 'yoruba' %}\n🚨 IPAJAWIRI! 🚨\n\nEni ti o ni ibatan pelu yin ({{ $('Get User & Emergency Contacts').item.json[0].full_name }}) ti pe lati inu ipajawiri kan.\n\nIgba: {{ new Date($('Extract Emergency Data').item.json.timestamp).toLocaleString('yo-NG') }}\nIru ipajawiri: {{ $('Extract Emergency Data').item.json.emergencyType }}\n\nJowo, kan si won ni kiakia tabi pe 199 fun iranlowo ipajawiri.\n\nMISS Legal AI\n{% elif $('Extract Emergency Data').item.json.language === 'hausa' %}\n🚨 GAGGAWA! 🚨\n\nWanda yake da alaƙa da ku ({{ $('Get User & Emergency Contacts').item.json[0].full_name }}) ya yi kiran gaggawa.\n\nLokaci: {{ new Date($('Extract Emergency Data').item.json.timestamp).toLocaleString('ha-NG') }}\nNau'in gaggawa: {{ $('Extract Emergency Data').item.json.emergencyType }}\n\nDon Allah, tuntuɓe su nan da nan ko kira 199 don taimakon gaggawa.\n\nMISS Legal AI\n{% elif $('Extract Emergency Data').item.json.language === 'igbo' %}\n🚨 IHEEMBEREDE! 🚨\n\nOnye metụtara gị ({{ $('Get User & Emergency Contacts').item.json[0].full_name }}) akpọọla site na ọnọdụ ihe mberede.\n\nOge: {{ new Date($('Extract Emergency Data').item.json.timestamp).toLocaleString('ig-NG') }}\nỤdị ihe mberede: {{ $('Extract Emergency Data').item.json.emergencyType }}\n\nBiko, kpọtụrụ ha ozugbo ma ọ bụ kpọọ 199 maka enyemaka ihe mberede.\n\nMISS Legal AI\n{% else %}\n🚨 EMERGENCY ALERT! 🚨\n\nYour contact {{ $('Get User & Emergency Contacts').item.json[0].full_name }} has triggered an emergency alert.\n\nTime: {{ new Date($('Extract Emergency Data').item.json.timestamp).toLocaleString('en-NG') }}\nEmergency Type: {{ $('Extract Emergency Data').item.json.emergencyType }}\nLocation: {{ $('Extract Emergency Data').item.json.location ? JSON.stringify($('Extract Emergency Data').item.json.location) : 'Not provided' }}\n\nPlease contact them immediately or call Nigerian Emergency Services at 199.\n\nThis alert was generated by MISS Legal AI emergency detection system.\n{% endif %}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "emr7-prepare-contact-message",
+      "name": "Prepare Contact Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "https://graph.facebook.com/v18.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.WHATSAPP_ACCESS_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "messaging_product",
+              "value": "whatsapp"
+            },
+            {
+              "name": "to",
+              "value": "={{ $json.contactPhone.replace(/[^0-9]/g, '') }}"
+            },
+            {
+              "name": "type",
+              "value": "text"
+            },
+            {
+              "name": "text",
+              "value": "={ \"body\": \"{{ $json.emergencyMessage }}\" }"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "emr8-send-whatsapp-alert",
+      "name": "Send WhatsApp Emergency Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1560,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $('Extract Emergency Data').item.json.emergencyType }}",
+              "operation": "equal",
+              "value2": "medical"
+            }
+          ],
+          "combineOperation": "any"
+        }
+      },
+      "id": "emr9-check-critical-emergency",
+      "name": "Check Critical Emergency",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/{{ $env.TWILIO_ACCOUNT_SID }}/Calls.json",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Basic {{ Buffer.from($env.TWILIO_ACCOUNT_SID + ':' + $env.TWILIO_AUTH_TOKEN).toString('base64') }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/x-www-form-urlencoded"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "To",
+              "value": "+234199"
+            },
+            {
+              "name": "From",
+              "value": "{{ $env.TWILIO_PHONE_NUMBER }}"
+            },
+            {
+              "name": "Twiml",
+              "value": "<Response><Say voice=\"alice\" language=\"en-NG\">Emergency alert from MISS Legal AI. Medical emergency detected for user {{ $('Get User & Emergency Contacts').item.json[0].full_name }}. Please dispatch assistance.</Say></Response>"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "emr10-call-emergency-services",
+      "name": "Call Nigerian Emergency Services",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1340,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.BACKEND_API_URL }}/api/emergency/notify-support",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.BACKEND_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "emergencyId",
+              "value": "={{ $('Create Emergency Record').item.json.id }}"
+            },
+            {
+              "name": "userId",
+              "value": "={{ $json.userId }}"
+            },
+            {
+              "name": "emergencyType",
+              "value": "={{ $json.emergencyType }}"
+            },
+            {
+              "name": "confidence",
+              "value": "={{ $json.confidence }}"
+            },
+            {
+              "name": "contactsNotified",
+              "value": "={{ $('Get User & Emergency Contacts').item.json[0].emergency_contacts.length }}"
+            },
+            {
+              "name": "criticalEmergency",
+              "value": "={{ $json.emergencyType === 'medical' || $json.emergencyType === 'violence' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "emr11-notify-support-team",
+      "name": "Notify MISS Support Team",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1780,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.BACKEND_API_URL }}/api/voice/emergency-instructions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.BACKEND_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "sessionId",
+              "value": "={{ $json.sessionId }}"
+            },
+            {
+              "name": "emergencyType",
+              "value": "={{ $json.emergencyType }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $json.language }}"
+            },
+            {
+              "name": "instructions",
+              "value": "={% if $json.language === 'yoruba' %}\nEmi yoo ranyin lowo. Awọn eniyan to wa laaro yin ti gbo nipa ryin. Ti o ba le, sọ fun mi ipo to wa yi.\n\nFun ipajawiri aarun: Pe 199 tabi lo si ile-iwosan to sunmọ yin gan.\nFun ipajawiri aabo: Lo si ibi to ni aabo tabi pe àgọ Police si 199.\n\nMISS Legal AI n tọ yin lowo.\n{% elif $json.language === 'hausa' %}\nZan taimake ku. Mutanen da suke kula da ku sun samu labarin gaggawar ku. Idan kuna iya, gaya mani yadda kuke a yanzu.\n\nDon gaggawar lafiya: Kira 199 ko je asibitin da ke kusa da ku.\nDon gaggawar tsaro: Je wurin aminci ko kira 'yan sanda a 199.\n\nMISS Legal AI yana taimaka muku.\n{% elif $json.language === 'igbo' %}\nAga m enyere gị aka. Ndị na-elekọta gị anụla maka ihe mberede gị. Ọ bụrụ na ị nwere ike, gwa m ka ị dị ugbu a.\n\nMaka ihe mberede ahụike: Kpọọ 199 ma ọ bụ gaa ụlọ ọgwụ kacha nso.\nMaka ihe mberede nchekwa: Gaa ebe nchekwa ma ọ bụ kpọọ ndị uwe ojii na 199.\n\nMISS Legal AI na-enyere gị aka.\n{% else %}\nI am here to help you. Your emergency contacts have been notified. If you can, please tell me your current status.\n\nFor medical emergencies: Call 199 or go to the nearest hospital.\nFor security emergencies: Go to a safe location or call Police at 199.\n\nStay on the line. MISS Legal AI is assisting you.\n{% endif %}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "emr12-send-voice-instructions",
+      "name": "Send Voice Emergency Instructions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "emr13-schedule-followup",
+      "name": "Schedule Follow-up Check",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/emergencies?id=eq.{{ $('Create Emergency Record').item.json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "follow_up_count",
+              "value": "={{ ($json.follow_up_count || 0) + 1 }}"
+            },
+            {
+              "name": "last_follow_up",
+              "value": "={{ new Date().toISOString() }}"
+            },
+            {
+              "name": "metadata",
+              "value": "={{ JSON.stringify({...$json.metadata, follow_ups: [...($json.metadata.follow_ups || []), { timestamp: new Date().toISOString(), type: 'automated_check' }] }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "emr14-update-followup-record",
+      "name": "Update Follow-up Record",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2220,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: true,\n  emergencyId: $('Create Emergency Record').item.json.id,\n  contactsNotified: $('Get User & Emergency Contacts').item.json[0].emergency_contacts.length,\n  supportNotified: true,\n  emergencyServicesContacted: $json.emergencyType === 'medical',\n  message: $json.language === 'yoruba' ? 'Ipajawiri ti gba, awọn eniyan laaro yin ti gbo' : $json.language === 'hausa' ? 'An karɓi gaggawa, an sanar da masu kulawa da ku' : $json.language === 'igbo' ? 'E natala ihe mberede, agwala ndị na-elekọta gị' : 'Emergency received and contacts have been notified'\n}) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "emr15-emergency-response",
+      "name": "Emergency Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: false,\n  error: 'Emergency confidence too low for automated response',\n  confidence: $json.confidence,\n  threshold: 0.7,\n  action: 'manual_review_required'\n}) }}",
+        "options": {
+          "responseCode": 202
+        }
+      },
+      "id": "emr16-low-confidence-response",
+      "name": "Low Confidence Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        900,
+        600
+      ]
+    }
+  ],
+  "connections": {
+    "Emergency Detection Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Emergency Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Emergency Data": {
+      "main": [
+        [
+          {
+            "node": "Validate Emergency Confidence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Emergency Confidence": {
+      "main": [
+        [
+          {
+            "node": "Get User & Emergency Contacts",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create Emergency Record",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Critical Emergency",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Low Confidence Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get User & Emergency Contacts": {
+      "main": [
+        [
+          {
+            "node": "Split Emergency Contacts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Emergency Contacts": {
+      "main": [
+        [
+          {
+            "node": "Prepare Contact Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Contact Message": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Emergency Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Critical Emergency": {
+      "main": [
+        [
+          {
+            "node": "Call Nigerian Emergency Services",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Send WhatsApp Emergency Alert": {
+      "main": [
+        [
+          {
+            "node": "Notify MISS Support Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Nigerian Emergency Services": {
+      "main": [
+        [
+          {
+            "node": "Notify MISS Support Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify MISS Support Team": {
+      "main": [
+        [
+          {
+            "node": "Send Voice Emergency Instructions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Voice Emergency Instructions": {
+      "main": [
+        [
+          {
+            "node": "Emergency Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Follow-up Check": {
+      "main": [
+        [
+          {
+            "node": "Update Follow-up Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "1",
+  "meta": {
+    "instanceId": "emergency-response-nigeria"
+  },
+  "id": "miss-legal-ai-emergency-response",
+  "tags": [
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "emergency",
+      "name": "Emergency Response"
+    },
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "miss-legal-ai",
+      "name": "MISS Legal AI"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+# Ignore environment variable files
+*.env
+.env.*
+
+# Node.js (if used)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python (if used)
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Logs
+logs/
+*.log
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# VSCode settings
+.vscode/
+
+# Build output
+dist/
+build/
+
+# System files
+.idea/
+*.swp

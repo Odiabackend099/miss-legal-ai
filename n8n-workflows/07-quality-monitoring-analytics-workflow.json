@@ -1,0 +1,774 @@
+{
+  "name": "MISS Legal AI - Quality Monitoring & Analytics",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "qa1-analytics-scheduler",
+      "name": "Analytics Collection Scheduler",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "reportType",
+              "value": "comprehensive_analytics"
+            },
+            {
+              "name": "timeRange",
+              "value": "last_6_hours"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ new Date().toISOString() }}"
+            },
+            {
+              "name": "reportId",
+              "value": "={{ $randomString(16) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "qa2-initialize-analytics",
+      "name": "Initialize Analytics Collection",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/voice_sessions?created_at=gte.{{ new Date(new Date().getTime() - 6*60*60*1000).toISOString() }}&select=*",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "qa3-collect-voice-sessions",
+      "name": "Collect Voice Session Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        680,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/emergencies?created_at=gte.{{ new Date(new Date().getTime() - 6*60*60*1000).toISOString() }}&select=*",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "qa4-collect-emergency-data",
+      "name": "Collect Emergency Detection Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/documents?created_at=gte.{{ new Date(new Date().getTime() - 6*60*60*1000).toISOString() }}&select=*",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "qa5-collect-document-data",
+      "name": "Collect Document Generation Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        680,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/payments?created_at=gte.{{ new Date(new Date().getTime() - 6*60*60*1000).toISOString() }}&select=*",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "qa6-collect-payment-data",
+      "name": "Collect Payment Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        680,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/consultations?created_at=gte.{{ new Date(new Date().getTime() - 6*60*60*1000).toISOString() }}&select=*",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "qa7-collect-consultation-data",
+      "name": "Collect Consultation Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        680,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Voice Session Analytics\nconst voiceSessions = $('Collect Voice Session Data').all();\nconst emergencies = $('Collect Emergency Detection Data').all();\nconst documents = $('Collect Document Generation Data').all();\nconst payments = $('Collect Payment Data').all();\nconst consultations = $('Collect Consultation Data').all();\n\n// Calculate Voice Session Metrics\nconst voiceMetrics = {\n  totalSessions: voiceSessions.length,\n  averageConfidence: voiceSessions.reduce((sum, session) => sum + (session.json.confidence || 0), 0) / voiceSessions.length || 0,\n  languageDistribution: {},\n  intentDistribution: {},\n  averageSessionDuration: 0,\n  successfulSessions: voiceSessions.filter(s => s.json.status === 'completed').length\n};\n\n// Language distribution\nvoiceSessions.forEach(session => {\n  const lang = session.json.language || 'unknown';\n  voiceMetrics.languageDistribution[lang] = (voiceMetrics.languageDistribution[lang] || 0) + 1;\n});\n\n// Intent distribution\nvoiceSessions.forEach(session => {\n  const intent = session.json.intent || 'unknown';\n  voiceMetrics.intentDistribution[intent] = (voiceMetrics.intentDistribution[intent] || 0) + 1;\n});\n\n// Emergency Detection Metrics\nconst emergencyMetrics = {\n  totalEmergencies: emergencies.length,\n  trueFalseRatio: {\n    medical: emergencies.filter(e => e.json.emergency_type === 'medical').length,\n    security: emergencies.filter(e => e.json.emergency_type === 'security').length,\n    legal: emergencies.filter(e => e.json.emergency_type === 'legal').length,\n    falsePositives: emergencies.filter(e => e.json.status === 'false_positive').length\n  },\n  averageConfidence: emergencies.reduce((sum, em) => sum + (em.json.confidence_score || 0), 0) / emergencies.length || 0,\n  responseTime: emergencies.reduce((sum, em) => {\n    const created = new Date(em.json.created_at);\n    const responded = new Date(em.json.last_follow_up || em.json.created_at);\n    return sum + (responded - created);\n  }, 0) / emergencies.length || 0\n};\n\n// Document Generation Metrics\nconst documentMetrics = {\n  totalDocuments: documents.length,\n  documentTypes: {},\n  languageDistribution: {},\n  stateDistribution: {},\n  averageGenerationTime: 0,\n  successRate: documents.filter(d => d.json.status === 'completed').length / documents.length || 0,\n  legalComplianceRate: documents.filter(d => d.json.metadata?.legalCompliance === true).length / documents.length || 0\n};\n\n// Document type distribution\ndocuments.forEach(doc => {\n  const type = doc.json.document_type || 'unknown';\n  documentMetrics.documentTypes[type] = (documentMetrics.documentTypes[type] || 0) + 1;\n  \n  const lang = doc.json.language || 'unknown';\n  documentMetrics.languageDistribution[lang] = (documentMetrics.languageDistribution[lang] || 0) + 1;\n  \n  const state = doc.json.state || 'unknown';\n  documentMetrics.stateDistribution[state] = (documentMetrics.stateDistribution[state] || 0) + 1;\n});\n\n// Payment & Revenue Metrics\nconst paymentMetrics = {\n  totalRevenue: payments.reduce((sum, payment) => sum + (parseFloat(payment.json.amount) || 0), 0),\n  totalTransactions: payments.length,\n  successfulPayments: payments.filter(p => p.json.status === 'successful').length,\n  failedPayments: payments.filter(p => p.json.status === 'failed').length,\n  subscriptionDistribution: {},\n  paymentMethods: {},\n  averageTransactionValue: 0\n};\n\nif (payments.length > 0) {\n  paymentMetrics.averageTransactionValue = paymentMetrics.totalRevenue / payments.length;\n  \n  payments.forEach(payment => {\n    const plan = payment.json.subscription_plan || 'unknown';\n    paymentMetrics.subscriptionDistribution[plan] = (paymentMetrics.subscriptionDistribution[plan] || 0) + 1;\n    \n    const method = payment.json.payment_method || 'unknown';\n    paymentMetrics.paymentMethods[method] = (paymentMetrics.paymentMethods[method] || 0) + 1;\n  });\n}\n\n// Consultation Metrics\nconst consultationMetrics = {\n  totalConsultations: consultations.length,\n  scheduledConsultations: consultations.filter(c => c.json.status === 'scheduled').length,\n  completedConsultations: consultations.filter(c => c.json.status === 'completed').length,\n  cancelledConsultations: consultations.filter(c => c.json.status === 'cancelled').length,\n  legalAreaDistribution: {},\n  averageConsultationFee: consultations.reduce((sum, c) => sum + (parseFloat(c.json.consultation_fee) || 0), 0) / consultations.length || 0,\n  urgencyDistribution: {}\n};\n\nconsultations.forEach(consultation => {\n  const area = consultation.json.legal_area || 'unknown';\n  consultationMetrics.legalAreaDistribution[area] = (consultationMetrics.legalAreaDistribution[area] || 0) + 1;\n  \n  const urgency = consultation.json.urgency || 'unknown';\n  consultationMetrics.urgencyDistribution[urgency] = (consultationMetrics.urgencyDistribution[urgency] || 0) + 1;\n});\n\n// System Performance Metrics\nconst systemMetrics = {\n  apiResponseTimes: {\n    voice_processing: voiceSessions.reduce((sum, s) => sum + (s.json.processing_time_ms || 0), 0) / voiceSessions.length || 0,\n    document_generation: documents.reduce((sum, d) => sum + (d.json.metadata?.processing_time_ms || 0), 0) / documents.length || 0,\n    emergency_response: emergencies.reduce((sum, e) => sum + (e.json.response_time_ms || 0), 0) / emergencies.length || 0\n  },\n  errorRates: {\n    voice_sessions: voiceSessions.filter(s => s.json.status === 'error').length / voiceSessions.length || 0,\n    document_generation: documents.filter(d => d.json.status === 'error').length / documents.length || 0,\n    payment_processing: payments.filter(p => p.json.status === 'failed').length / payments.length || 0\n  },\n  userEngagement: {\n    activeUsers: new Set(voiceSessions.map(s => s.json.user_id)).size,\n    returningUsers: voiceSessions.filter(s => {\n      const userSessions = voiceSessions.filter(session => session.json.user_id === s.json.user_id);\n      return userSessions.length > 1;\n    }).length\n  }\n};\n\n// Quality Scores\nconst qualityMetrics = {\n  overallSystemHealth: {\n    voice_processing: Math.max(0, 100 - (systemMetrics.errorRates.voice_sessions * 100)),\n    document_generation: Math.max(0, 100 - (systemMetrics.errorRates.document_generation * 100)),\n    emergency_detection: Math.max(0, 100 - (emergencyMetrics.trueFalseRatio.falsePositives / emergencyMetrics.totalEmergencies * 100 || 0)),\n    payment_processing: Math.max(0, 100 - (systemMetrics.errorRates.payment_processing * 100))\n  },\n  userSatisfaction: {\n    voice_confidence: voiceMetrics.averageConfidence * 100,\n    document_compliance: documentMetrics.legalComplianceRate * 100,\n    emergency_accuracy: emergencyMetrics.averageConfidence * 100\n  },\n  nigerianOptimization: {\n    localLanguageUsage: {\n      english: voiceMetrics.languageDistribution.english || 0,\n      yoruba: voiceMetrics.languageDistribution.yoruba || 0,\n      hausa: voiceMetrics.languageDistribution.hausa || 0,\n      igbo: voiceMetrics.languageDistribution.igbo || 0,\n      pidgin: voiceMetrics.languageDistribution.pidgin || 0\n    },\n    stateDistribution: documentMetrics.stateDistribution,\n    localPaymentMethods: paymentMetrics.paymentMethods\n  }\n};\n\n// Business Intelligence\nconst businessMetrics = {\n  revenue: {\n    totalRevenue: paymentMetrics.totalRevenue,\n    monthlyRecurringRevenue: payments.filter(p => p.json.subscription_plan && p.json.subscription_plan !== 'one_time').reduce((sum, p) => sum + parseFloat(p.json.amount), 0),\n    averageRevenuePerUser: paymentMetrics.totalRevenue / systemMetrics.userEngagement.activeUsers || 0,\n    subscriptionTierRevenue: {}\n  },\n  growth: {\n    newUsers: systemMetrics.userEngagement.activeUsers - systemMetrics.userEngagement.returningUsers,\n    userRetention: systemMetrics.userEngagement.returningUsers / systemMetrics.userEngagement.activeUsers || 0,\n    documentGenerationGrowth: documentMetrics.totalDocuments,\n    consultationGrowth: consultationMetrics.totalConsultations\n  },\n  operationalEfficiency: {\n    documentGenerationRate: documentMetrics.successRate,\n    emergencyResponseTime: emergencyMetrics.responseTime / 60000, // in minutes\n    lawyerUtilization: consultationMetrics.completedConsultations / consultationMetrics.scheduledConsultations || 0\n  }\n};\n\n// Calculate subscription tier revenue\nfor (const [plan, count] of Object.entries(paymentMetrics.subscriptionDistribution)) {\n  const planPayments = payments.filter(p => p.json.subscription_plan === plan);\n  businessMetrics.revenue.subscriptionTierRevenue[plan] = planPayments.reduce((sum, p) => sum + parseFloat(p.json.amount), 0);\n}\n\n// Alerts and Recommendations\nconst alerts = [];\nconst recommendations = [];\n\n// Check for critical issues\nif (systemMetrics.errorRates.voice_sessions > 0.1) {\n  alerts.push({ type: 'critical', message: 'High voice processing error rate detected', value: systemMetrics.errorRates.voice_sessions });\n}\n\nif (emergencyMetrics.trueFalseRatio.falsePositives / emergencyMetrics.totalEmergencies > 0.3) {\n  alerts.push({ type: 'warning', message: 'High false positive rate in emergency detection', value: emergencyMetrics.trueFalseRatio.falsePositives });\n}\n\nif (systemMetrics.errorRates.payment_processing > 0.05) {\n  alerts.push({ type: 'critical', message: 'Payment processing issues detected', value: systemMetrics.errorRates.payment_processing });\n}\n\n// Generate recommendations\nif (voiceMetrics.languageDistribution.english > voiceMetrics.totalSessions * 0.8) {\n  recommendations.push({ type: 'growth', message: 'Consider promoting local language features', priority: 'medium' });\n}\n\nif (documentMetrics.legalComplianceRate < 0.9) {\n  recommendations.push({ type: 'quality', message: 'Improve legal compliance validation', priority: 'high' });\n}\n\nif (businessMetrics.growth.userRetention < 0.6) {\n  recommendations.push({ type: 'retention', message: 'Implement user retention strategies', priority: 'high' });\n}\n\nreturn [{\n  json: {\n    reportId: $('Initialize Analytics Collection').item.json.reportId,\n    timestamp: $('Initialize Analytics Collection').item.json.timestamp,\n    timeRange: $('Initialize Analytics Collection').item.json.timeRange,\n    voiceMetrics,\n    emergencyMetrics,\n    documentMetrics,\n    paymentMetrics,\n    consultationMetrics,\n    systemMetrics,\n    qualityMetrics,\n    businessMetrics,\n    alerts,\n    recommendations,\n    summary: {\n      totalUsers: systemMetrics.userEngagement.activeUsers,\n      totalRevenue: paymentMetrics.totalRevenue,\n      systemHealth: (qualityMetrics.overallSystemHealth.voice_processing + qualityMetrics.overallSystemHealth.document_generation + qualityMetrics.overallSystemHealth.emergency_detection + qualityMetrics.overallSystemHealth.payment_processing) / 4,\n      criticalAlerts: alerts.filter(a => a.type === 'critical').length,\n      highPriorityRecommendations: recommendations.filter(r => r.priority === 'high').length\n    }\n  }\n}];"
+      },
+      "id": "qa8-process-analytics",
+      "name": "Process Analytics Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/analytics_reports",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "={{ $json.reportId }}"
+            },
+            {
+              "name": "report_type",
+              "value": "comprehensive_analytics"
+            },
+            {
+              "name": "time_range",
+              "value": "{{ $json.timeRange }}"
+            },
+            {
+              "name": "voice_metrics",
+              "value": "={{ JSON.stringify($json.voiceMetrics) }}"
+            },
+            {
+              "name": "emergency_metrics",
+              "value": "={{ JSON.stringify($json.emergencyMetrics) }}"
+            },
+            {
+              "name": "document_metrics",
+              "value": "={{ JSON.stringify($json.documentMetrics) }}"
+            },
+            {
+              "name": "payment_metrics",
+              "value": "={{ JSON.stringify($json.paymentMetrics) }}"
+            },
+            {
+              "name": "consultation_metrics",
+              "value": "={{ JSON.stringify($json.consultationMetrics) }}"
+            },
+            {
+              "name": "system_metrics",
+              "value": "={{ JSON.stringify($json.systemMetrics) }}"
+            },
+            {
+              "name": "quality_metrics",
+              "value": "={{ JSON.stringify($json.qualityMetrics) }}"
+            },
+            {
+              "name": "business_metrics",
+              "value": "={{ JSON.stringify($json.businessMetrics) }}"
+            },
+            {
+              "name": "alerts",
+              "value": "={{ JSON.stringify($json.alerts) }}"
+            },
+            {
+              "name": "recommendations",
+              "value": "={{ JSON.stringify($json.recommendations) }}"
+            },
+            {
+              "name": "summary",
+              "value": "={{ JSON.stringify($json.summary) }}"
+            },
+            {
+              "name": "created_at",
+              "value": "={{ $json.timestamp }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "qa9-save-analytics-report",
+      "name": "Save Analytics Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.summary.criticalAlerts }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "qa10-check-critical-alerts",
+      "name": "Check for Critical Alerts",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "subject": "🚨 MISS Legal AI - Critical System Alerts",
+        "message": "Critical system issues detected in MISS Legal AI:\n\nSystem Health: {{ $('Process Analytics Data').item.json.summary.systemHealth.toFixed(2) }}%\nCritical Alerts: {{ $('Process Analytics Data').item.json.summary.criticalAlerts }}\n\nAlert Details:\n{{ $('Process Analytics Data').item.json.alerts.filter(a => a.type === 'critical').map(alert => `- ${alert.message}: ${alert.value}`).join('\\n') }}\n\nHigh Priority Recommendations:\n{{ $('Process Analytics Data').item.json.recommendations.filter(r => r.priority === 'high').map(rec => `- ${rec.message}`).join('\\n') }}\n\nSystem Metrics:\n- Total Users: {{ $('Process Analytics Data').item.json.summary.totalUsers }}\n- Total Revenue: ₦{{ $('Process Analytics Data').item.json.summary.totalRevenue }}\n- Voice Processing Errors: {{ ($('Process Analytics Data').item.json.systemMetrics.errorRates.voice_sessions * 100).toFixed(2) }}%\n- Document Generation Errors: {{ ($('Process Analytics Data').item.json.systemMetrics.errorRates.document_generation * 100).toFixed(2) }}%\n- Payment Processing Errors: {{ ($('Process Analytics Data').item.json.systemMetrics.errorRates.payment_processing * 100).toFixed(2) }}%\n\nTime Range: {{ $('Process Analytics Data').item.json.timeRange }}\nReport ID: {{ $('Process Analytics Data').item.json.reportId }}\nGenerated: {{ $('Process Analytics Data').item.json.timestamp }}\n\nPlease investigate these issues immediately.",
+        "fromEmail": "alerts@misslegai.com",
+        "fromName": "MISS Legal AI Monitoring",
+        "toEmail": "admin@misslegai.com,tech@misslegai.com",
+        "options": {
+          "attachments": "",
+          "ccEmail": "",
+          "bccEmail": "",
+          "replyTo": "noreply@misslegai.com"
+        }
+      },
+      "id": "qa11-send-critical-alert",
+      "name": "Send Critical Alert Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "https://graph.facebook.com/v18.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.WHATSAPP_ACCESS_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "messaging_product",
+              "value": "whatsapp"
+            },
+            {
+              "name": "to",
+              "value": "{{ $env.ADMIN_WHATSAPP_NUMBER }}"
+            },
+            {
+              "name": "type",
+              "value": "text"
+            },
+            {
+              "name": "text",
+              "value": "={ \"body\": \"🚨 MISS Legal AI CRITICAL ALERT\\n\\nSystem Health: {{ $('Process Analytics Data').item.json.summary.systemHealth.toFixed(2) }}%\\nCritical Issues: {{ $('Process Analytics Data').item.json.summary.criticalAlerts }}\\n\\nImmediate attention required!\\nReport ID: {{ $('Process Analytics Data').item.json.reportId }}\" }"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "qa12-send-whatsapp-alert",
+      "name": "Send WhatsApp Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1560,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "qa13-daily-report-scheduler",
+      "name": "Daily Report Scheduler",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        240,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/analytics_reports?order=created_at.desc&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "qa14-get-latest-report",
+      "name": "Get Latest Analytics Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        460,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "subject": "📊 MISS Legal AI - Daily Performance Report",
+        "message": "Daily Performance Report for MISS Legal AI\n\n📈 EXECUTIVE SUMMARY\nSystem Health: {{ JSON.parse($json[0].summary).systemHealth.toFixed(2) }}%\nTotal Users: {{ JSON.parse($json[0].summary).totalUsers }}\nTotal Revenue: ₦{{ JSON.parse($json[0].summary).totalRevenue.toLocaleString() }}\nCritical Alerts: {{ JSON.parse($json[0].summary).criticalAlerts }}\n\n🎤 VOICE PROCESSING\nTotal Sessions: {{ JSON.parse($json[0].voice_metrics).totalSessions }}\nAverage Confidence: {{ (JSON.parse($json[0].voice_metrics).averageConfidence * 100).toFixed(2) }}%\nSuccessful Sessions: {{ JSON.parse($json[0].voice_metrics).successfulSessions }}\n\n🚨 EMERGENCY DETECTION\nTotal Emergencies: {{ JSON.parse($json[0].emergency_metrics).totalEmergencies }}\nAverage Confidence: {{ (JSON.parse($json[0].emergency_metrics).averageConfidence * 100).toFixed(2) }}%\nFalse Positives: {{ JSON.parse($json[0].emergency_metrics).trueFalseRatio.falsePositives }}\n\n📄 DOCUMENT GENERATION\nTotal Documents: {{ JSON.parse($json[0].document_metrics).totalDocuments }}\nSuccess Rate: {{ (JSON.parse($json[0].document_metrics).successRate * 100).toFixed(2) }}%\nLegal Compliance Rate: {{ (JSON.parse($json[0].document_metrics).legalComplianceRate * 100).toFixed(2) }}%\n\n💰 REVENUE METRICS\nTotal Revenue: ₦{{ JSON.parse($json[0].payment_metrics).totalRevenue.toLocaleString() }}\nSuccessful Payments: {{ JSON.parse($json[0].payment_metrics).successfulPayments }}\nFailed Payments: {{ JSON.parse($json[0].payment_metrics).failedPayments }}\n\n👨‍💼 LAWYER CONSULTATIONS\nTotal Consultations: {{ JSON.parse($json[0].consultation_metrics).totalConsultations }}\nScheduled: {{ JSON.parse($json[0].consultation_metrics).scheduledConsultations }}\nCompleted: {{ JSON.parse($json[0].consultation_metrics).completedConsultations }}\n\n🇳🇬 NIGERIAN MARKET INSIGHTS\nLanguage Distribution:\n- English: {{ JSON.parse($json[0].quality_metrics).nigerianOptimization.localLanguageUsage.english || 0 }}\n- Yoruba: {{ JSON.parse($json[0].quality_metrics).nigerianOptimization.localLanguageUsage.yoruba || 0 }}\n- Hausa: {{ JSON.parse($json[0].quality_metrics).nigerianOptimization.localLanguageUsage.hausa || 0 }}\n- Igbo: {{ JSON.parse($json[0].quality_metrics).nigerianOptimization.localLanguageUsage.igbo || 0 }}\n- Pidgin: {{ JSON.parse($json[0].quality_metrics).nigerianOptimization.localLanguageUsage.pidgin || 0 }}\n\n📊 BUSINESS INTELLIGENCE\nMonthly Recurring Revenue: ₦{{ JSON.parse($json[0].business_metrics).revenue.monthlyRecurringRevenue.toLocaleString() }}\nAverage Revenue Per User: ₦{{ JSON.parse($json[0].business_metrics).revenue.averageRevenuePerUser.toFixed(2) }}\nUser Retention: {{ (JSON.parse($json[0].business_metrics).growth.userRetention * 100).toFixed(2) }}%\n\n⚠️ ALERTS & RECOMMENDATIONS\nWarnings: {{ JSON.parse($json[0].alerts).filter(a => a.type === 'warning').length }}\nHigh Priority Recommendations: {{ JSON.parse($json[0].recommendations).filter(r => r.priority === 'high').length }}\n\n---\nReport Generated: {{ $json[0].created_at }}\nReport ID: {{ $json[0].id }}\n\nFor detailed analytics, access the admin dashboard at https://admin.misslegai.com",
+        "fromEmail": "reports@misslegai.com",
+        "fromName": "MISS Legal AI Analytics",
+        "toEmail": "leadership@misslegai.com,analytics@misslegai.com",
+        "options": {
+          "attachments": "",
+          "ccEmail": "admin@misslegai.com",
+          "bccEmail": "",
+          "replyTo": "noreply@misslegai.com"
+        }
+      },
+      "id": "qa15-send-daily-report",
+      "name": "Send Daily Report Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        680,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.BACKEND_API_URL }}/api/analytics/optimize-system",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.BACKEND_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "reportId",
+              "value": "={{ $('Process Analytics Data').item.json.reportId }}"
+            },
+            {
+              "name": "recommendations",
+              "value": "={{ JSON.stringify($('Process Analytics Data').item.json.recommendations) }}"
+            },
+            {
+              "name": "systemMetrics",
+              "value": "={{ JSON.stringify($('Process Analytics Data').item.json.systemMetrics) }}"
+            },
+            {
+              "name": "qualityMetrics",
+              "value": "={{ JSON.stringify($('Process Analytics Data').item.json.qualityMetrics) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "qa16-trigger-system-optimization",
+      "name": "Trigger System Optimization",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1780,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $('Process Analytics Data').item.json.summary.systemHealth }}",
+              "operation": "smaller",
+              "value2": 70
+            }
+          ]
+        }
+      },
+      "id": "qa17-check-system-health",
+      "name": "Check System Health Threshold",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.BACKEND_API_URL }}/api/system/emergency-maintenance",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.BACKEND_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "reason",
+              "value": "system_health_below_threshold"
+            },
+            {
+              "name": "systemHealth",
+              "value": "={{ $('Process Analytics Data').item.json.summary.systemHealth }}"
+            },
+            {
+              "name": "criticalAlerts",
+              "value": "={{ JSON.stringify($('Process Analytics Data').item.json.alerts.filter(a => a.type === 'critical')) }}"
+            },
+            {
+              "name": "reportId",
+              "value": "={{ $('Process Analytics Data').item.json.reportId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "qa18-trigger-emergency-maintenance",
+      "name": "Trigger Emergency Maintenance",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1560,
+        600
+      ]
+    }
+  ],
+  "connections": {
+    "Analytics Collection Scheduler": {
+      "main": [
+        [
+          {
+            "node": "Initialize Analytics Collection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize Analytics Collection": {
+      "main": [
+        [
+          {
+            "node": "Collect Voice Session Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Collect Emergency Detection Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Collect Document Generation Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Collect Payment Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Collect Consultation Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Consultation Data": {
+      "main": [
+        [
+          {
+            "node": "Process Analytics Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Analytics Data": {
+      "main": [
+        [
+          {
+            "node": "Save Analytics Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Analytics Report": {
+      "main": [
+        [
+          {
+            "node": "Check for Critical Alerts",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check System Health Threshold",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Trigger System Optimization",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for Critical Alerts": {
+      "main": [
+        [
+          {
+            "node": "Send Critical Alert Email",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send WhatsApp Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Check System Health Threshold": {
+      "main": [
+        [
+          {
+            "node": "Trigger Emergency Maintenance",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Daily Report Scheduler": {
+      "main": [
+        [
+          {
+            "node": "Get Latest Analytics Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Latest Analytics Report": {
+      "main": [
+        [
+          {
+            "node": "Send Daily Report Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "1",
+  "meta": {
+    "instanceId": "analytics-monitoring-nigeria"
+  },
+  "id": "miss-legal-ai-quality-monitoring",
+  "tags": [
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "analytics",
+      "name": "Analytics & Monitoring"
+    },
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "quality-assurance",
+      "name": "Quality Assurance"
+    },
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "miss-legal-ai",
+      "name": "MISS Legal AI"
+    }
+  ]
+}

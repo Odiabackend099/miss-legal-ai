@@ -1,0 +1,277 @@
+{
+  "name": "MISS Legal AI - 100% Autonomous Lead Generation & Revenue System",
+  "description": "Complete autonomous workflow from leads to revenue management for MISS Legal AI powered by ODIA AI Solutions",
+  "meta": {
+    "templateCreatedBy": "ODIA Intelligence",
+    "created": "2025-06-01",
+    "version": "1.0.0",
+    "category": "Autonomous Business Operations"
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "path": "lead-capture",
+        "httpMethod": "POST",
+        "authentication": "none",
+        "responseMode": "responseNode"
+      },
+      "id": "webhook-lead-capture",
+      "name": "🎯 Lead Capture Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 100],
+      "webhookId": "miss-legal-ai-leads"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 🤖 AUTONOMOUS LEAD PROCESSING\n// Intelligent lead qualification and scoring\n\nconst lead = $input.first().json;\nconst timestamp = new Date().toISOString();\n\n// Extract lead information\nconst leadData = {\n  id: 'LEAD_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),\n  timestamp,\n  source: lead.source || 'website',\n  email: lead.email,\n  phone: lead.phone,\n  name: lead.name,\n  location: lead.location || 'Lagos',\n  language: lead.language || 'english',\n  legal_need: lead.legal_need || 'general',\n  urgency: lead.urgency || 'medium',\n  company: lead.company || null,\n  raw_data: lead\n};\n\n// 🧠 AI-POWERED LEAD SCORING\nlet score = 0;\nlet tier = 'bronze';\nlet followup_priority = 'low';\n\n// Email quality scoring\nif (leadData.email && leadData.email.includes('@')) {\n  score += 20;\n  if (leadData.email.includes('.com') || leadData.email.includes('.ng')) score += 10;\n  if (leadData.email.includes('gmail') || leadData.email.includes('yahoo')) score += 5;\n}\n\n// Phone number scoring (Nigerian format)\nif (leadData.phone) {\n  score += 15;\n  if (leadData.phone.startsWith('+234') || leadData.phone.startsWith('0')) score += 10;\n  if (leadData.phone.length >= 11) score += 5;\n}\n\n// Legal need urgency scoring\nswitch (leadData.urgency) {\n  case 'emergency': score += 50; followup_priority = 'immediate'; break;\n  case 'urgent': score += 30; followup_priority = 'high'; break;\n  case 'medium': score += 15; followup_priority = 'medium'; break;\n  case 'low': score += 5; followup_priority = 'low'; break;\n}\n\n// Legal need type scoring\nswitch (leadData.legal_need) {\n  case 'emergency': score += 40; break;\n  case 'document_generation': score += 25; break;\n  case 'lawyer_consultation': score += 30; break;\n  case 'tenancy_agreement': score += 20; break;\n  case 'affidavit': score += 15; break;\n  case 'power_of_attorney': score += 20; break;\n  case 'general': score += 10; break;\n}\n\n// Location scoring (major Nigerian cities)\nconst premiumCities = ['lagos', 'abuja', 'port harcourt', 'kano', 'ibadan'];\nif (premiumCities.includes(leadData.location.toLowerCase())) {\n  score += 15;\n}\n\n// Company/organization scoring\nif (leadData.company) {\n  score += 25;\n  if (leadData.company.toLowerCase().includes('law') || \n      leadData.company.toLowerCase().includes('legal') ||\n      leadData.company.toLowerCase().includes('chambers')) {\n    score += 20;\n  }\n}\n\n// Determine tier based on score\nif (score >= 80) {\n  tier = 'diamond';\n  followup_priority = 'immediate';\n} else if (score >= 60) {\n  tier = 'gold';\n  followup_priority = 'high';\n} else if (score >= 40) {\n  tier = 'silver';\n  followup_priority = 'medium';\n} else {\n  tier = 'bronze';\n  followup_priority = 'low';\n}\n\n// Autonomous recommendation engine\nlet recommended_plan = 'free';\nlet estimated_value = 0;\nlet conversion_probability = 0;\n\nif (score >= 70) {\n  recommended_plan = 'premium';\n  estimated_value = 12000; // ₦1,000 x 12 months\n  conversion_probability = 0.75;\n} else if (score >= 50) {\n  recommended_plan = 'premium';\n  estimated_value = 6000; // ₦1,000 x 6 months\n  conversion_probability = 0.55;\n} else if (score >= 30) {\n  recommended_plan = 'free_to_premium';\n  estimated_value = 3000; // ₦1,000 x 3 months\n  conversion_probability = 0.35;\n} else {\n  recommended_plan = 'free';\n  estimated_value = 500; // Document fees\n  conversion_probability = 0.15;\n}\n\n// Check for TaaS (enterprise) potential\nif (leadData.company && score >= 60) {\n  recommended_plan = 'taas';\n  estimated_value = 50000; // ₦50,000/month\n  conversion_probability = 0.25;\n}\n\nconst processedLead = {\n  ...leadData,\n  score,\n  tier,\n  followup_priority,\n  recommended_plan,\n  estimated_value,\n  conversion_probability,\n  next_action: determineNextAction(tier, leadData.urgency),\n  followup_schedule: generateFollowupSchedule(tier, leadData.urgency),\n  personalization: generatePersonalization(leadData),\n  status: 'new',\n  assigned_agent: assignAgent(tier, leadData.location),\n  processed_by: 'autonomous_ai',\n  processing_timestamp: timestamp\n};\n\nconsole.log(`🎯 Lead processed: ${leadData.name} | Score: ${score} | Tier: ${tier} | Priority: ${followup_priority}`);\n\nfunction determineNextAction(tier, urgency) {\n  if (urgency === 'emergency') return 'immediate_call';\n  if (tier === 'diamond') return 'personal_call_within_5min';\n  if (tier === 'gold') return 'whatsapp_within_15min';\n  if (tier === 'silver') return 'email_within_1hour';\n  return 'email_within_24hours';\n}\n\nfunction generateFollowupSchedule(tier, urgency) {\n  const now = new Date();\n  if (urgency === 'emergency') {\n    return {\n      immediate: new Date(now.getTime() + 2 * 60 * 1000), // 2 minutes\n      followup_1: new Date(now.getTime() + 30 * 60 * 1000), // 30 minutes\n      followup_2: new Date(now.getTime() + 6 * 60 * 60 * 1000) // 6 hours\n    };\n  }\n  \n  if (tier === 'diamond') {\n    return {\n      immediate: new Date(now.getTime() + 5 * 60 * 1000), // 5 minutes\n      followup_1: new Date(now.getTime() + 4 * 60 * 60 * 1000), // 4 hours\n      followup_2: new Date(now.getTime() + 24 * 60 * 60 * 1000), // 1 day\n      followup_3: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) // 7 days\n    };\n  }\n  \n  return {\n    immediate: new Date(now.getTime() + 60 * 60 * 1000), // 1 hour\n    followup_1: new Date(now.getTime() + 24 * 60 * 60 * 1000), // 1 day\n    followup_2: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000), // 3 days\n    followup_3: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000), // 7 days\n    followup_4: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000) // 30 days\n  };\n}\n\nfunction generatePersonalization(leadData) {\n  return {\n    greeting: getGreeting(leadData.language),\n    legal_focus: leadData.legal_need,\n    location_context: getLocationContext(leadData.location),\n    urgency_tone: getUrgencyTone(leadData.urgency),\n    language_preference: leadData.language\n  };\n}\n\nfunction getGreeting(language) {\n  const greetings = {\n    english: 'Good day',\n    pidgin: 'How far',\n    yoruba: 'Ẹ kú àárọ̀',\n    hausa: 'Sannu',\n    igbo: 'Ndewo'\n  };\n  return greetings[language] || greetings.english;\n}\n\nfunction getLocationContext(location) {\n  const contexts = {\n    lagos: 'as someone in the commercial capital of Nigeria',\n    abuja: 'as someone in the federal capital territory',\n    'port harcourt': 'as someone in the oil capital',\n    kano: 'as someone in the northern commercial hub',\n    ibadan: 'as someone in the ancient city'\n  };\n  return contexts[location.toLowerCase()] || 'as a valued Nigerian client';\n}\n\nfunction getUrgencyTone(urgency) {\n  const tones = {\n    emergency: 'immediate and urgent',\n    urgent: 'prompt and focused',\n    medium: 'professional and helpful',\n    low: 'friendly and informative'\n  };\n  return tones[urgency] || tones.medium;\n}\n\nfunction assignAgent(tier, location) {\n  // Autonomous agent assignment based on tier and location\n  if (tier === 'diamond') return 'senior_legal_advisor';\n  if (tier === 'gold') return 'legal_specialist';\n  \n  // Location-based assignment for local context\n  const locationAgents = {\n    lagos: 'lagos_legal_team',\n    abuja: 'abuja_legal_team',\n    'port harcourt': 'south_south_team',\n    kano: 'northern_team',\n    ibadan: 'southwest_team'\n  };\n  \n  return locationAgents[location.toLowerCase()] || 'general_legal_team';\n}\n\nreturn [{ json: processedLead }];"
+      },
+      "id": "autonomous-lead-processing",
+      "name": "🤖 AI Lead Intelligence Engine",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 100]
+    },
+    {
+      "parameters": {
+        "resource": "rows",
+        "operation": "insert",
+        "table": "leads",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.id }}",
+            "email": "={{ $json.email }}",
+            "phone": "={{ $json.phone }}",
+            "name": "={{ $json.name }}",
+            "location": "={{ $json.location }}",
+            "language": "={{ $json.language }}",
+            "legal_need": "={{ $json.legal_need }}",
+            "urgency": "={{ $json.urgency }}",
+            "company": "={{ $json.company }}",
+            "score": "={{ $json.score }}",
+            "tier": "={{ $json.tier }}",
+            "followup_priority": "={{ $json.followup_priority }}",
+            "recommended_plan": "={{ $json.recommended_plan }}",
+            "estimated_value": "={{ $json.estimated_value }}",
+            "conversion_probability": "={{ $json.conversion_probability }}",
+            "next_action": "={{ $json.next_action }}",
+            "status": "={{ $json.status }}",
+            "assigned_agent": "={{ $json.assigned_agent }}",
+            "created_at": "={{ $json.timestamp }}",
+            "source": "={{ $json.source }}",
+            "raw_data": "={{ JSON.stringify($json.raw_data) }}"
+          }
+        }
+      },
+      "id": "store-lead-supabase",
+      "name": "💾 Store Lead in Database",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [600, 100],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-credentials",
+          "name": "Supabase MISS Legal AI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false
+          },
+          "conditions": [
+            {
+              "id": "emergency-condition",
+              "leftValue": "={{ $json.urgency }}",
+              "rightValue": "emergency",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "check-emergency",
+      "name": "🚨 Emergency Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [800, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 🚨 EMERGENCY LEAD PROCESSING\n// Immediate response for emergency legal situations\n\nconst lead = $input.first().json;\n\n// Create emergency alert\nconst emergencyAlert = {\n  alert_id: 'EMERGENCY_' + Date.now(),\n  lead_id: lead.id,\n  name: lead.name,\n  phone: lead.phone,\n  email: lead.email,\n  location: lead.location,\n  legal_need: lead.legal_need,\n  urgency: 'EMERGENCY',\n  alert_time: new Date().toISOString(),\n  response_required: 'immediate',\n  escalation_level: 'high',\n  notification_channels: ['whatsapp', 'call', 'email', 'sms'],\n  assigned_emergency_team: 'emergency_legal_response',\n  expected_response_time: '2_minutes',\n  follow_up_schedule: {\n    immediate: new Date(Date.now() + 2 * 60 * 1000).toISOString(),\n    check_1: new Date(Date.now() + 15 * 60 * 1000).toISOString(),\n    check_2: new Date(Date.now() + 60 * 60 * 1000).toISOString()\n  }\n};\n\nconsole.log(`🚨 EMERGENCY LEAD DETECTED: ${lead.name} - ${lead.legal_need}`);\n\nreturn [{ json: emergencyAlert }];"
+      },
+      "id": "emergency-processing",
+      "name": "🚨 Emergency Response Processing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 50]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false
+          },
+          "conditions": [
+            {
+              "id": "tier-condition",
+              "leftValue": "={{ $json.tier }}",
+              "rightValue": "diamond",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "tier-condition-gold",
+              "leftValue": "={{ $json.tier }}",
+              "rightValue": "gold",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        }
+      },
+      "id": "check-premium-tier",
+      "name": "💎 Premium Tier Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [800, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 💎 PREMIUM LEAD PROCESSING\n// VIP treatment for high-value leads\n\nconst lead = $input.first().json;\n\n// Create premium engagement strategy\nconst premiumStrategy = {\n  strategy_id: 'PREMIUM_' + Date.now(),\n  lead_id: lead.id,\n  tier: lead.tier,\n  approach: 'white_glove_service',\n  personalized_demo: true,\n  dedicated_account_manager: true,\n  custom_onboarding: true,\n  priority_support: true,\n  special_pricing: lead.tier === 'diamond' ? 'enterprise_discount' : 'premium_discount',\n  engagement_timeline: {\n    contact_1: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 minutes\n    demo_scheduled: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // 2 hours\n    follow_up: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours\n    decision_follow_up: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString() // 3 days\n  },\n  communication_channels: ['phone', 'whatsapp', 'email'],\n  offer_expiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days\n  estimated_deal_size: lead.estimated_value,\n  conversion_tactics: [\n    'personal_consultation',\n    'custom_legal_templates',\n    'priority_emergency_response',\n    'dedicated_phone_line'\n  ]\n};\n\nconsole.log(`💎 PREMIUM LEAD STRATEGY: ${lead.name} - ${lead.tier} tier`);\n\nreturn [{ json: { ...lead, premium_strategy: premiumStrategy } }];"
+      },
+      "id": "premium-processing",
+      "name": "💎 Premium Lead Strategy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 📧 AUTONOMOUS EMAIL GENERATION\n// AI-powered personalized email creation\n\nconst lead = $input.first().json;\nconst personalization = lead.personalization;\n\n// Generate personalized subject line\nfunction generateSubject(lead) {\n  const subjects = {\n    emergency: `🚨 Immediate Legal Assistance Available for ${lead.name}`,\n    diamond: `${personalization.greeting} ${lead.name}, Your Personal Legal AI Assistant Awaits`,\n    gold: `Quick Legal Help for ${lead.name} - MISS Legal AI`,\n    silver: `${personalization.greeting} ${lead.name}, Affordable Legal AI Solutions`,\n    bronze: `Welcome ${lead.name}! Free Legal AI Consultation Available`\n  };\n  \n  if (lead.urgency === 'emergency') return subjects.emergency;\n  return subjects[lead.tier] || subjects.bronze;\n}\n\n// Generate personalized email content\nfunction generateEmailContent(lead) {\n  const greeting = personalization.greeting;\n  const locationContext = personalization.location_context;\n  const legalFocus = lead.legal_need;\n  \n  let content = `${greeting} ${lead.name},\\n\\n`;\n  \n  // Opening based on urgency and tier\n  if (lead.urgency === 'emergency') {\n    content += `I understand you have an urgent legal situation that needs immediate attention. As Nigeria's most advanced legal AI assistant, MISS is ready to help you right now.\\n\\n`;\n    content += `🚨 Emergency Response Features:\\n`;\n    content += `• Immediate AI legal consultation\\n`;\n    content += `• Emergency contact notification\\n`;\n    content += `• 24/7 legal document generation\\n`;\n    content += `• Direct connection to verified lawyers\\n\\n`;\n  } else if (lead.tier === 'diamond' || lead.tier === 'gold') {\n    content += `Thank you for your interest in MISS Legal AI. ${locationContext}, I know you need reliable, professional legal assistance that understands the Nigerian legal system.\\n\\n`;\n    content += `Based on your interest in ${legalFocus}, I've prepared a personalized demonstration just for you.\\n\\n`;\n  } else {\n    content += `Welcome to MISS Legal AI - Nigeria's first voice-powered legal assistant! ${locationContext}, we're here to make legal help accessible and affordable.\\n\\n`;\n  }\n  \n  // Legal need specific content\n  switch (legalFocus) {\n    case 'tenancy_agreement':\n      content += `🏠 Tenancy Agreement Assistance:\\n`;\n      content += `• Voice-to-document creation in minutes\\n`;\n      content += `• Lagos State and other Nigerian states compliance\\n`;\n      content += `• Landlord and tenant protection clauses\\n`;\n      content += `• Legal review by qualified Nigerian lawyers\\n\\n`;\n      break;\n    case 'affidavit':\n      content += `📋 Affidavit Services:\\n`;\n      content += `• Evidence Act 2011 compliant documents\\n`;\n      content += `• Court-ready formatting for all Nigerian courts\\n`;\n      content += `• Multiple affidavit types (Loss, Identity, Age, etc.)\\n`;\n      content += `• Notarization guidance included\\n\\n`;\n      break;\n    case 'power_of_attorney':\n      content += `⚖️ Power of Attorney Creation:\\n`;\n      content += `• General and Special POA options\\n`;\n      content += `• Property and business authorization\\n`;\n      content += `• Legal execution requirements guidance\\n`;\n      content += `• Revocation procedures included\\n\\n`;\n      break;\n    default:\n      content += `🤖 MISS Legal AI Features:\\n`;\n      content += `• Voice-first legal consultation in 5 Nigerian languages\\n`;\n      content += `• Emergency legal response with contact notification\\n`;\n      content += `• Legal document generation (Tenancy, Affidavit, POA)\\n`;\n      content += `• Connection to verified Nigerian lawyers\\n\\n`;\n  }\n  \n  // Language support\n  content += `🗣️ Speak in Your Language:\\n`;\n  content += `We support English, Pidgin, Yoruba, Hausa, and Igbo - so you can get legal help in the language you're most comfortable with.\\n\\n`;\n  \n  // Pricing based on tier\n  if (lead.tier === 'diamond' || lead.tier === 'gold') {\n    content += `💼 Premium Access:\\n`;\n    content += `I'd like to offer you a special consultation to discuss your specific needs. No obligation - just a conversation about how MISS can serve you best.\\n\\n`;\n  } else {\n    content += `💰 Affordable Nigerian Pricing:\\n`;\n    content += `• Free Plan: Basic consultation + 2 documents/month\\n`;\n    content += `• Premium: ₦1,000/month for unlimited access\\n`;\n    content += `• Per Document: ₦200-₦500 as needed\\n\\n`;\n  }\n  \n  // Call to action\n  if (lead.urgency === 'emergency') {\n    content += `⚡ IMMEDIATE ACTION NEEDED:\\n`;\n    content += `Click this link for instant legal assistance: https://miss-legal.ai/emergency\\n`;\n    content += `Or call our emergency line: +234-XXX-XXXX\\n\\n`;\n  } else if (lead.tier === 'diamond' || lead.tier === 'gold') {\n    content += `📞 Next Steps:\\n`;\n    content += `I'll be calling you within the next hour to schedule your personal consultation. If you prefer a specific time, simply reply to this email.\\n\\n`;\n    content += `Or start immediately: https://miss-legal.ai/premium-access\\n\\n`;\n  } else {\n    content += `🚀 Try MISS Now:\\n`;\n    content += `Start your free legal consultation: https://miss-legal.ai/start\\n`;\n    content += `Download our mobile app: https://miss-legal.ai/app\\n\\n`;\n  }\n  \n  // NDPR compliance and closing\n  content += `Your privacy is protected under Nigeria's Data Protection Regulation (NDPR). We only use your information to provide legal assistance.\\n\\n`;\n  content += `Best regards,\\n`;\n  content += `The MISS Legal AI Team\\n`;\n  content += `Powered by ODIA AI Solutions\\n`;\n  content += `\"Even at 1am, MISS go para for you legally.\"\\n\\n`;\n  content += `---\\n`;\n  content += `Need immediate help? Visit: https://miss-legal.ai\\n`;\n  content += `WhatsApp: +234-XXX-XXXX | Email: support@miss-legal.ai`;\n  \n  return content;\n}\n\nconst emailData = {\n  to: lead.email,\n  subject: generateSubject(lead),\n  content: generateEmailContent(lead),\n  priority: lead.urgency === 'emergency' ? 'high' : (lead.tier === 'diamond' || lead.tier === 'gold') ? 'high' : 'normal',\n  tracking: {\n    lead_id: lead.id,\n    tier: lead.tier,\n    urgency: lead.urgency,\n    legal_need: lead.legal_need,\n    campaign: 'autonomous_lead_nurture'\n  },\n  follow_up_scheduled: lead.followup_schedule.immediate,\n  send_immediately: lead.urgency === 'emergency' || lead.tier === 'diamond'\n};\n\nconsole.log(`📧 Email generated for ${lead.name} - ${lead.tier} tier, ${lead.urgency} urgency`);\n\nreturn [{ json: { ...lead, email_data: emailData } }];"
+      },
+      "id": "generate-email",
+      "name": "📧 AI Email Generator",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 100]
+    }
+  ],
+  "connections": {
+    "webhook-lead-capture": {
+      "main": [
+        [
+          {
+            "node": "autonomous-lead-processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "autonomous-lead-processing": {
+      "main": [
+        [
+          {
+            "node": "store-lead-supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "store-lead-supabase": {
+      "main": [
+        [
+          {
+            "node": "check-emergency",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "check-premium-tier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check-emergency": {
+      "main": [
+        [
+          {
+            "node": "emergency-processing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "generate-email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check-premium-tier": {
+      "main": [
+        [
+          {
+            "node": "premium-processing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "generate-email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "emergency-processing": {
+      "main": [
+        [
+          {
+            "node": "generate-email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "premium-processing": {
+      "main": [
+        [
+          {
+            "node": "generate-email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-06-01T00:00:00.000Z",
+  "versionId": "autonomous-v1"
+}

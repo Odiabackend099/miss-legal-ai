@@ -1,0 +1,299 @@
+{
+  "name": "MISS Legal AI - Autonomous Payment & Revenue Management",
+  "description": "100% autonomous payment processing, subscription management, and revenue optimization",
+  "meta": {
+    "templateCreatedBy": "ODIA Intelligence",
+    "created": "2025-06-01",
+    "version": "1.0.0",
+    "category": "Revenue Operations"
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "path": "flutterwave-webhook",
+        "httpMethod": "POST",
+        "authentication": "headerAuth"
+      },
+      "id": "flutterwave-webhook",
+      "name": "💳 Flutterwave Payment Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 100],
+      "webhookId": "flutterwave-payments"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 🔐 AUTONOMOUS PAYMENT SECURITY VALIDATION\n// Advanced security and fraud detection\n\nconst payload = $input.first().json;\nconst headers = $input.first().headers;\n\n// Security validation\nconst signature = headers['verif-hash'];\nconst secretKey = 'FLWSECK-652d980d30ba7baf3feef50fdf69ae6a-1972a5bd4a3vt-X';\n\nconsole.log('🔒 Payment webhook received:', {\n  event: payload.event,\n  status: payload.data?.status,\n  tx_ref: payload.data?.tx_ref,\n  amount: payload.data?.amount,\n  currency: payload.data?.currency\n});\n\n// Validate webhook signature\nif (signature !== secretKey) {\n  console.error('🚫 Invalid webhook signature - Security breach attempt!');\n  throw new Error('Invalid webhook signature');\n}\n\n// Extract payment data\nconst paymentData = payload.data;\n\n// 🤖 AUTONOMOUS FRAUD DETECTION\nlet fraudScore = 0;\nlet fraudIndicators = [];\n\n// Check for suspicious patterns\nif (paymentData.amount > 500000) { // > ₦500,000\n  fraudScore += 20;\n  fraudIndicators.push('high_amount');\n}\n\n// Check payment timing (suspicious if multiple payments in short time)\nif (paymentData.customer?.email) {\n  // In real implementation, check database for recent payments\n  // For now, simulate check\n  const recentPayments = false; // Would check database\n  if (recentPayments) {\n    fraudScore += 30;\n    fraudIndicators.push('rapid_payments');\n  }\n}\n\n// Check currency consistency\nif (paymentData.currency !== 'NGN') {\n  fraudScore += 15;\n  fraudIndicators.push('foreign_currency');\n}\n\n// Check customer data completeness\nif (!paymentData.customer?.email || !paymentData.customer?.phone) {\n  fraudScore += 10;\n  fraudIndicators.push('incomplete_customer_data');\n}\n\n// Determine fraud risk level\nlet riskLevel = 'low';\nif (fraudScore >= 50) {\n  riskLevel = 'high';\n} else if (fraudScore >= 25) {\n  riskLevel = 'medium';\n}\n\n// 💰 AUTONOMOUS PAYMENT PROCESSING\nconst processedPayment = {\n  payment_id: paymentData.id,\n  tx_ref: paymentData.tx_ref,\n  flw_ref: paymentData.flw_ref,\n  status: paymentData.status,\n  amount: parseFloat(paymentData.amount),\n  currency: paymentData.currency,\n  customer: paymentData.customer,\n  payment_type: paymentData.payment_type,\n  created_at: paymentData.created_at,\n  \n  // Fraud detection results\n  fraud_score: fraudScore,\n  fraud_indicators: fraudIndicators,\n  risk_level: riskLevel,\n  \n  // Processing metadata\n  processed_at: new Date().toISOString(),\n  processed_by: 'autonomous_payment_system',\n  webhook_event: payload.event,\n  \n  // Nigerian market context\n  nigerian_context: {\n    is_nigerian_payment: paymentData.currency === 'NGN',\n    payment_method_local: ['card', 'bank_transfer', 'ussd', 'mobile_money'].includes(paymentData.payment_type),\n    estimated_location: detectLocation(paymentData)\n  },\n  \n  // Autonomous actions required\n  requires_manual_review: riskLevel === 'high',\n  auto_approve: riskLevel === 'low' && paymentData.status === 'successful',\n  next_actions: determineNextActions(paymentData, riskLevel)\n};\n\nfunction detectLocation(paymentData) {\n  // Basic location detection based on payment patterns\n  if (paymentData.customer?.phone?.startsWith('+234') || paymentData.customer?.phone?.startsWith('0')) {\n    return 'Nigeria';\n  }\n  return 'Unknown';\n}\n\nfunction determineNextActions(paymentData, riskLevel) {\n  const actions = [];\n  \n  if (paymentData.status === 'successful' && riskLevel === 'low') {\n    actions.push('activate_subscription');\n    actions.push('send_welcome_email');\n    actions.push('unlock_premium_features');\n    actions.push('schedule_onboarding');\n  } else if (paymentData.status === 'successful' && riskLevel === 'medium') {\n    actions.push('verify_customer');\n    actions.push('conditional_activation');\n    actions.push('enhanced_monitoring');\n  } else if (riskLevel === 'high') {\n    actions.push('hold_activation');\n    actions.push('manual_review_required');\n    actions.push('security_verification');\n  } else if (paymentData.status === 'failed') {\n    actions.push('retry_payment');\n    actions.push('contact_customer');\n    actions.push('update_payment_method');\n  }\n  \n  return actions;\n}\n\nconsole.log(`💳 Payment processed: ${paymentData.tx_ref} | Amount: ₦${paymentData.amount} | Risk: ${riskLevel}`);\n\nreturn [{ json: processedPayment }];"
+      },
+      "id": "payment-security-processing",
+      "name": "🔐 Security & Fraud Detection",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 100]
+    },
+    {
+      "parameters": {
+        "resource": "rows",
+        "operation": "insert",
+        "table": "payments",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "payment_id": "={{ $json.payment_id }}",
+            "tx_ref": "={{ $json.tx_ref }}",
+            "flw_ref": "={{ $json.flw_ref }}",
+            "status": "={{ $json.status }}",
+            "amount": "={{ $json.amount }}",
+            "currency": "={{ $json.currency }}",
+            "customer_email": "={{ $json.customer.email }}",
+            "customer_phone": "={{ $json.customer.phone }}",
+            "payment_type": "={{ $json.payment_type }}",
+            "fraud_score": "={{ $json.fraud_score }}",
+            "risk_level": "={{ $json.risk_level }}",
+            "created_at": "={{ $json.created_at }}",
+            "processed_at": "={{ $json.processed_at }}",
+            "auto_approved": "={{ $json.auto_approve }}",
+            "requires_review": "={{ $json.requires_manual_review }}"
+          }
+        }
+      },
+      "id": "store-payment",
+      "name": "💾 Store Payment Record",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [600, 100],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-credentials",
+          "name": "Supabase MISS Legal AI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false
+          },
+          "conditions": [
+            {
+              "id": "successful-payment",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "successful",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "low-risk",
+              "leftValue": "={{ $json.risk_level }}",
+              "rightValue": "high",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-payment-success",
+      "name": "✅ Payment Success Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [800, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 🚀 AUTONOMOUS SUBSCRIPTION ACTIVATION\n// Intelligent plan determination and feature unlocking\n\nconst payment = $input.first().json;\n\n// 🧠 AUTONOMOUS PLAN DETECTION\n// Intelligent plan identification based on payment amount and context\nlet detectedPlan = 'free';\nlet planFeatures = [];\nlet subscriptionType = 'one_time';\nlet billingCycle = null;\nlet nextBillingDate = null;\n\nconst amount = payment.amount;\n\n// Plan detection logic\nif (amount >= 50000) {\n  detectedPlan = 'taas';\n  subscriptionType = 'subscription';\n  billingCycle = 'monthly';\n  planFeatures = [\n    'unlimited_users_100',\n    'admin_dashboard',\n    'priority_support',\n    'custom_branding',\n    'analytics',\n    'dedicated_account_manager',\n    'custom_integrations',\n    'emergency_escalation'\n  ];\n} else if (amount >= 12000) {\n  detectedPlan = 'premium_annual';\n  subscriptionType = 'subscription';\n  billingCycle = 'annual';\n  planFeatures = [\n    'unlimited_voice_chat',\n    'unlimited_documents',\n    'priority_emergency_response',\n    'lawyer_consultation_discount',\n    'pdf_export',\n    'whatsapp_integration',\n    'multi_language_support'\n  ];\n} else if (amount >= 1000) {\n  detectedPlan = 'premium';\n  subscriptionType = 'subscription';\n  billingCycle = 'monthly';\n  planFeatures = [\n    'unlimited_voice_chat',\n    'unlimited_documents',\n    'priority_support',\n    'pdf_export',\n    'whatsapp_integration',\n    'emergency_response'\n  ];\n} else if (amount >= 500) {\n  detectedPlan = 'daas_bundle';\n  subscriptionType = 'one_time';\n  planFeatures = [\n    'multiple_documents',\n    'voice_generation',\n    'basic_support',\n    'pdf_export'\n  ];\n} else if (amount >= 200) {\n  detectedPlan = 'daas_single';\n  subscriptionType = 'one_time';\n  planFeatures = [\n    'single_document',\n    'voice_generation',\n    'basic_support',\n    'pdf_export'\n  ];\n}\n\n// Calculate next billing date for subscriptions\nif (subscriptionType === 'subscription') {\n  const now = new Date();\n  if (billingCycle === 'monthly') {\n    nextBillingDate = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());\n  } else if (billingCycle === 'annual') {\n    nextBillingDate = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());\n  }\n}\n\n// 🎯 AUTONOMOUS CUSTOMER SEGMENTATION\nlet customerSegment = 'standard';\nlet priorityLevel = 'normal';\nlet accountManager = 'auto_assigned';\n\nif (detectedPlan === 'taas') {\n  customerSegment = 'enterprise';\n  priorityLevel = 'high';\n  accountManager = 'dedicated_enterprise_manager';\n} else if (detectedPlan.includes('premium')) {\n  customerSegment = 'premium';\n  priorityLevel = 'high';\n  accountManager = 'premium_success_manager';\n} else if (amount >= 500) {\n  customerSegment = 'valued';\n  priorityLevel = 'medium';\n  accountManager = 'customer_success_team';\n}\n\n// 📊 AUTONOMOUS REVENUE TRACKING\nconst revenueData = {\n  mrr_impact: calculateMRRImpact(detectedPlan, amount, billingCycle),\n  arr_impact: calculateARRImpact(detectedPlan, amount, billingCycle),\n  ltv_estimate: calculateLTV(detectedPlan, amount),\n  churn_risk: assessChurnRisk(detectedPlan, payment.customer),\n  expansion_opportunity: assessExpansionOpportunity(detectedPlan, amount)\n};\n\nfunction calculateMRRImpact(plan, amount, cycle) {\n  if (cycle === 'monthly') return amount;\n  if (cycle === 'annual') return amount / 12;\n  return 0; // One-time payments don't contribute to MRR\n}\n\nfunction calculateARRImpact(plan, amount, cycle) {\n  if (cycle === 'monthly') return amount * 12;\n  if (cycle === 'annual') return amount;\n  return 0; // One-time payments don't contribute to ARR\n}\n\nfunction calculateLTV(plan, amount) {\n  const ltv_multipliers = {\n    taas: 24, // 24 months average\n    premium_annual: 18,\n    premium: 12,\n    daas_bundle: 1,\n    daas_single: 1\n  };\n  return amount * (ltv_multipliers[plan] || 1);\n}\n\nfunction assessChurnRisk(plan, customer) {\n  // Basic churn risk assessment\n  if (plan === 'taas') return 'low'; // Enterprise customers are sticky\n  if (plan.includes('premium')) return 'medium';\n  return 'high'; // One-time customers have high churn risk\n}\n\nfunction assessExpansionOpportunity(plan, amount) {\n  if (plan === 'daas_single') return 'high'; // Can upgrade to subscription\n  if (plan === 'premium' && amount === 1000) return 'medium'; // Can upgrade to annual\n  if (plan === 'premium_annual') return 'low'; // Already high tier\n  return 'medium';\n}\n\n// 🎉 ACTIVATION STRATEGY\nconst activationPlan = {\n  subscription_id: 'SUB_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),\n  customer_email: payment.customer.email,\n  customer_phone: payment.customer.phone,\n  plan: detectedPlan,\n  subscription_type: subscriptionType,\n  billing_cycle: billingCycle,\n  amount: amount,\n  currency: payment.currency,\n  features: planFeatures,\n  status: 'active',\n  activated_at: new Date().toISOString(),\n  next_billing_date: nextBillingDate?.toISOString(),\n  \n  // Customer management\n  customer_segment: customerSegment,\n  priority_level: priorityLevel,\n  account_manager: accountManager,\n  \n  // Revenue analytics\n  revenue_data: revenueData,\n  \n  // Onboarding strategy\n  onboarding_flow: determineOnboardingFlow(detectedPlan),\n  welcome_sequence: generateWelcomeSequence(detectedPlan, payment.customer),\n  \n  // Success metrics\n  success_metrics: {\n    time_to_first_value: calculateTimeToValue(detectedPlan),\n    key_activation_events: getActivationEvents(detectedPlan),\n    success_milestones: getSuccessMilestones(detectedPlan)\n  }\n};\n\nfunction determineOnboardingFlow(plan) {\n  const flows = {\n    taas: 'enterprise_white_glove',\n    premium_annual: 'premium_guided',\n    premium: 'premium_self_serve',\n    daas_bundle: 'document_focused',\n    daas_single: 'quick_start'\n  };\n  return flows[plan] || 'standard';\n}\n\nfunction generateWelcomeSequence(plan, customer) {\n  const baseSequence = {\n    immediate: 'payment_confirmation',\n    day_0: 'welcome_email',\n    day_1: 'feature_introduction',\n    day_3: 'first_use_guidance',\n    day_7: 'progress_check',\n    day_30: 'satisfaction_survey'\n  };\n  \n  if (plan === 'taas') {\n    return {\n      ...baseSequence,\n      immediate: 'enterprise_welcome_call_scheduled',\n      day_0: 'account_manager_introduction',\n      day_1: 'custom_onboarding_session'\n    };\n  }\n  \n  return baseSequence;\n}\n\nfunction calculateTimeToValue(plan) {\n  const timeToValue = {\n    taas: '24_hours', // Enterprise needs setup time\n    premium_annual: '1_hour',\n    premium: '30_minutes',\n    daas_bundle: '15_minutes',\n    daas_single: '5_minutes'\n  };\n  return timeToValue[plan] || '30_minutes';\n}\n\nfunction getActivationEvents(plan) {\n  const events = {\n    taas: ['admin_dashboard_setup', 'team_member_invitation', 'first_bulk_document'],\n    premium: ['voice_chat_completion', 'document_generation', 'emergency_contact_setup'],\n    daas: ['document_generation_complete', 'pdf_download']\n  };\n  return events[plan] || events.premium;\n}\n\nfunction getSuccessMilestones(plan) {\n  const milestones = {\n    taas: ['10_users_active', '50_documents_generated', 'admin_training_complete'],\n    premium: ['5_voice_chats', '3_documents_generated', 'emergency_setup'],\n    daas: ['document_completed', 'satisfaction_rating']\n  };\n  return milestones[plan] || milestones.premium;\n}\n\nconsole.log(`🚀 Subscription activated: ${detectedPlan} for ${payment.customer.email} - ₦${amount}`);\n\nreturn [{ json: activationPlan }];"
+      },
+      "id": "subscription-activation",
+      "name": "🚀 Autonomous Subscription Activation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 100]
+    },
+    {
+      "parameters": {
+        "resource": "rows",
+        "operation": "insert",
+        "table": "subscriptions",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "subscription_id": "={{ $json.subscription_id }}",
+            "customer_email": "={{ $json.customer_email }}",
+            "customer_phone": "={{ $json.customer_phone }}",
+            "plan": "={{ $json.plan }}",
+            "subscription_type": "={{ $json.subscription_type }}",
+            "billing_cycle": "={{ $json.billing_cycle }}",
+            "amount": "={{ $json.amount }}",
+            "currency": "={{ $json.currency }}",
+            "status": "={{ $json.status }}",
+            "activated_at": "={{ $json.activated_at }}",
+            "next_billing_date": "={{ $json.next_billing_date }}",
+            "customer_segment": "={{ $json.customer_segment }}",
+            "priority_level": "={{ $json.priority_level }}",
+            "features": "={{ JSON.stringify($json.features) }}",
+            "mrr_impact": "={{ $json.revenue_data.mrr_impact }}",
+            "arr_impact": "={{ $json.revenue_data.arr_impact }}",
+            "ltv_estimate": "={{ $json.revenue_data.ltv_estimate }}",
+            "churn_risk": "={{ $json.revenue_data.churn_risk }}"
+          }
+        }
+      },
+      "id": "store-subscription",
+      "name": "💾 Store Subscription",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1200, 100],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-credentials",
+          "name": "Supabase MISS Legal AI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false
+          },
+          "conditions": [
+            {
+              "id": "failed-payment",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "failed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "check-failed-payment",
+      "name": "❌ Failed Payment Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [800, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 🔄 AUTONOMOUS FAILED PAYMENT RECOVERY\n// Intelligent retry strategy and customer communication\n\nconst payment = $input.first().json;\n\n// 📊 FAILURE ANALYSIS\nconst failureReasons = {\n  'insufficient_funds': {\n    retry_strategy: 'delayed_retry',\n    retry_delay: '24_hours',\n    customer_message: 'insufficient_funds_guidance',\n    retry_count_max: 3\n  },\n  'expired_card': {\n    retry_strategy: 'update_payment_method',\n    retry_delay: 'immediate',\n    customer_message: 'card_update_required',\n    retry_count_max: 1\n  },\n  'network_error': {\n    retry_strategy: 'immediate_retry',\n    retry_delay: '5_minutes',\n    customer_message: 'technical_issue',\n    retry_count_max: 5\n  },\n  'invalid_cvv': {\n    retry_strategy: 'update_payment_method',\n    retry_delay: 'immediate',\n    customer_message: 'payment_details_incorrect',\n    retry_count_max: 2\n  },\n  'bank_decline': {\n    retry_strategy: 'alternative_payment_method',\n    retry_delay: '1_hour',\n    customer_message: 'bank_declined_guidance',\n    retry_count_max: 2\n  }\n};\n\n// Detect failure reason (simplified - in real implementation, would analyze Flutterwave response)\nlet detectedReason = 'network_error'; // Default\nif (payment.processor_response) {\n  const response = payment.processor_response.toLowerCase();\n  if (response.includes('insufficient') || response.includes('balance')) {\n    detectedReason = 'insufficient_funds';\n  } else if (response.includes('expired') || response.includes('expiry')) {\n    detectedReason = 'expired_card';\n  } else if (response.includes('cvv') || response.includes('security')) {\n    detectedReason = 'invalid_cvv';\n  } else if (response.includes('declined') || response.includes('reject')) {\n    detectedReason = 'bank_decline';\n  }\n}\n\nconst failureStrategy = failureReasons[detectedReason];\n\n// 🤖 AUTONOMOUS RECOVERY PLAN\nconst recoveryPlan = {\n  payment_id: payment.payment_id,\n  tx_ref: payment.tx_ref,\n  customer_email: payment.customer.email,\n  customer_phone: payment.customer.phone,\n  failure_reason: detectedReason,\n  failure_timestamp: new Date().toISOString(),\n  \n  // Recovery strategy\n  retry_strategy: failureStrategy.retry_strategy,\n  retry_delay: failureStrategy.retry_delay,\n  max_retries: failureStrategy.retry_count_max,\n  current_retry_count: 0,\n  \n  // Customer communication\n  customer_message_type: failureStrategy.customer_message,\n  communication_channels: ['email', 'whatsapp', 'sms'],\n  urgency_level: determineUrgencyLevel(payment.amount),\n  \n  // Alternative options\n  alternative_payment_methods: [\n    'bank_transfer',\n    'ussd_payment',\n    'mobile_money',\n    'different_card'\n  ],\n  \n  // Incentives to retry\n  retry_incentives: generateRetryIncentives(payment.amount, detectedReason),\n  \n  // Next actions\n  scheduled_actions: [\n    {\n      action: 'send_failure_notification',\n      schedule: 'immediate',\n      channels: ['email', 'whatsapp']\n    },\n    {\n      action: 'provide_alternative_methods',\n      schedule: '1_hour',\n      channels: ['email']\n    },\n    {\n      action: 'retry_payment',\n      schedule: failureStrategy.retry_delay,\n      condition: 'customer_authorizes'\n    },\n    {\n      action: 'offer_assistance',\n      schedule: '24_hours',\n      channels: ['phone_call']\n    }\n  ]\n};\n\nfunction determineUrgencyLevel(amount) {\n  if (amount >= 50000) return 'high'; // Enterprise customer\n  if (amount >= 1000) return 'medium'; // Premium customer\n  return 'low';\n}\n\nfunction generateRetryIncentives(amount, reason) {\n  const incentives = [];\n  \n  if (reason === 'insufficient_funds') {\n    incentives.push('payment_plan_option');\n    incentives.push('next_month_discount_10_percent');\n  } else if (reason === 'expired_card' || reason === 'invalid_cvv') {\n    incentives.push('priority_support');\n    incentives.push('extended_trial_period');\n  } else {\n    incentives.push('technical_support');\n    incentives.push('alternative_payment_bonus');\n  }\n  \n  // High-value customer incentives\n  if (amount >= 50000) {\n    incentives.push('dedicated_account_manager');\n    incentives.push('custom_payment_terms');\n  } else if (amount >= 1000) {\n    incentives.push('priority_customer_service');\n    incentives.push('extended_features_trial');\n  }\n  \n  return incentives;\n}\n\n// 📧 GENERATE RECOVERY COMMUNICATION\nconst communicationPlan = {\n  immediate_email: {\n    subject: generateFailureEmailSubject(detectedReason, payment.amount),\n    content: generateFailureEmailContent(detectedReason, payment, recoveryPlan),\n    priority: 'high',\n    include_retry_link: true\n  },\n  whatsapp_message: {\n    message: generateWhatsAppMessage(detectedReason, payment.customer.name),\n    include_payment_link: true,\n    timing: 'immediate'\n  },\n  followup_sequence: generateFollowupSequence(detectedReason, payment.amount)\n};\n\nfunction generateFailureEmailSubject(reason, amount) {\n  const subjects = {\n    insufficient_funds: 'Payment Issue - Easy Solutions Available',\n    expired_card: 'Update Your Payment Method - Quick Fix Needed',\n    network_error: 'Technical Issue with Your Payment - We\\'re Here to Help',\n    invalid_cvv: 'Payment Details Update Required',\n    bank_decline: 'Alternative Payment Options Available'\n  };\n  \n  if (amount >= 50000) {\n    return `[Priority] ${subjects[reason]} - Enterprise Support Available`;\n  }\n  \n  return subjects[reason] || 'Payment Issue - We\\'re Here to Help';\n}\n\nfunction generateFailureEmailContent(reason, payment, recovery) {\n  let content = `Dear ${payment.customer.name || 'Valued Customer'},\\n\\n`;\n  \n  // Reason-specific opening\n  const openings = {\n    insufficient_funds: 'Your payment couldn\\'t be processed due to insufficient funds. This happens sometimes, and we have easy solutions.',\n    expired_card: 'Your payment card appears to have expired. This is a quick fix!',\n    network_error: 'We experienced a technical issue while processing your payment. Don\\'t worry - this is usually temporary.',\n    invalid_cvv: 'There was an issue with your card security code. This is easily resolved.',\n    bank_decline: 'Your bank declined the payment. We have alternative options available.'\n  };\n  \n  content += openings[reason] || 'We encountered an issue with your payment, but we\\'re here to help resolve it quickly.';\n  content += '\\n\\n';\n  \n  // Solutions\n  content += '🔧 Easy Solutions:\\n';\n  recovery.retry_incentives.forEach(incentive => {\n    const incentiveTexts = {\n      payment_plan_option: '• Set up a payment plan that works for your budget',\n      next_month_discount_10_percent: '• Get 10% off your next month when you retry',\n      priority_support: '• Get priority support to resolve this quickly',\n      extended_trial_period: '• Enjoy extended trial period while you update payment',\n      technical_support: '• Get free technical support for payment issues',\n      alternative_payment_bonus: '• Try alternative payment method with bonus features',\n      dedicated_account_manager: '• Get assigned dedicated account manager',\n      custom_payment_terms: '• Discuss custom payment terms that work for you'\n    };\n    content += incentiveTexts[incentive] || '';\n    content += '\\n';\n  });\n  \n  content += '\\n';\n  content += '🚀 Retry Your Payment: [RETRY_PAYMENT_LINK]\\n';\n  content += '💬 Need Help? WhatsApp us: +234-XXX-XXXX\\n';\n  content += '📧 Email Support: payments@miss-legal.ai\\n\\n';\n  \n  content += 'We\\'re committed to making this right for you.\\n\\n';\n  content += 'Best regards,\\n';\n  content += 'MISS Legal AI Payment Team\\n';\n  content += 'Powered by ODIA AI Solutions';\n  \n  return content;\n}\n\nfunction generateWhatsAppMessage(reason, customerName) {\n  const messages = {\n    insufficient_funds: `Hi ${customerName}, your MISS Legal AI payment needs a quick retry. We have easy payment plans available! 💳`,\n    expired_card: `Hi ${customerName}, just need to update your card details for MISS Legal AI. Quick 2-minute fix! 🔄`,\n    network_error: `Hi ${customerName}, technical hiccup with your MISS Legal AI payment. Retrying now should work! ⚡`,\n    invalid_cvv: `Hi ${customerName}, need to verify your card security code for MISS Legal AI. Easy fix! 🔐`,\n    bank_decline: `Hi ${customerName}, your bank declined the MISS Legal AI payment. We have other options! 🏦`\n  };\n  \n  return messages[reason] || `Hi ${customerName}, quick payment issue with MISS Legal AI. We're here to help! 💪`;\n}\n\nfunction generateFollowupSequence(reason, amount) {\n  const baseSequence = [\n    { delay: '1_hour', action: 'send_alternative_methods' },\n    { delay: '24_hours', action: 'personal_outreach' },\n    { delay: '3_days', action: 'final_reminder' }\n  ];\n  \n  if (amount >= 50000) {\n    return [\n      { delay: '30_minutes', action: 'account_manager_call' },\n      { delay: '2_hours', action: 'custom_payment_solution' },\n      { delay: '1_day', action: 'executive_review' }\n    ];\n  }\n  \n  return baseSequence;\n}\n\nconst fullRecoveryPlan = {\n  ...recoveryPlan,\n  communication_plan: communicationPlan\n};\n\nconsole.log(`🔄 Payment recovery initiated: ${payment.tx_ref} - Reason: ${detectedReason}`);\n\nreturn [{ json: fullRecoveryPlan }];"
+      },
+      "id": "failed-payment-recovery",
+      "name": "🔄 Autonomous Payment Recovery",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 📊 AUTONOMOUS REVENUE ANALYTICS & INSIGHTS\n// Real-time revenue tracking and business intelligence\n\nconst subscription = $input.first().json;\n\n// 📈 REAL-TIME REVENUE METRICS\nconst now = new Date();\nconst currentMonth = now.getMonth();\nconst currentYear = now.getFullYear();\n\n// Calculate revenue impact\nconst revenueMetrics = {\n  // Monthly Recurring Revenue\n  mrr_addition: subscription.revenue_data.mrr_impact,\n  mrr_date: now.toISOString(),\n  \n  // Annual Recurring Revenue\n  arr_addition: subscription.revenue_data.arr_impact,\n  \n  // Customer metrics\n  new_customer: true,\n  customer_segment: subscription.customer_segment,\n  plan_tier: subscription.plan,\n  \n  // Business intelligence\n  revenue_quality_score: calculateRevenueQualityScore(subscription),\n  expansion_potential: subscription.revenue_data.expansion_opportunity,\n  churn_risk_level: subscription.revenue_data.churn_risk,\n  \n  // Geographic analytics\n  market_segment: 'nigeria',\n  customer_location: detectCustomerLocation(subscription),\n  \n  // Product analytics\n  acquisition_channel: detectAcquisitionChannel(subscription),\n  conversion_time: 'immediate', // Since this is post-payment\n  plan_preference: subscription.plan,\n  \n  // Forecasting data\n  ltv_contribution: subscription.revenue_data.ltv_estimate,\n  payback_period: calculatePaybackPeriod(subscription),\n  growth_trajectory: assessGrowthTrajectory(subscription)\n};\n\nfunction calculateRevenueQualityScore(subscription) {\n  let score = 0;\n  \n  // Plan quality scoring\n  const planScores = {\n    taas: 100,\n    premium_annual: 90,\n    premium: 75,\n    daas_bundle: 50,\n    daas_single: 25\n  };\n  score += planScores[subscription.plan] || 0;\n  \n  // Payment method reliability\n  if (subscription.billing_cycle === 'annual') score += 20;\n  if (subscription.amount >= 50000) score += 15; // High-value customer\n  \n  // Customer segment bonus\n  if (subscription.customer_segment === 'enterprise') score += 10;\n  \n  return Math.min(score, 100);\n}\n\nfunction detectCustomerLocation(subscription) {\n  // In real implementation, would use payment data, phone numbers, etc.\n  const phone = subscription.customer_phone;\n  if (phone?.startsWith('+234') || phone?.startsWith('0')) {\n    return 'nigeria';\n  }\n  return 'unknown';\n}\n\nfunction detectAcquisitionChannel(subscription) {\n  // In real implementation, would track UTM parameters, referrers, etc.\n  // For now, simulate based on plan type\n  if (subscription.plan === 'taas') return 'enterprise_sales';\n  if (subscription.plan.includes('premium')) return 'organic_website';\n  return 'website_direct';\n}\n\nfunction calculatePaybackPeriod(subscription) {\n  // Simplified payback calculation\n  const cac = 5000; // Estimated Customer Acquisition Cost in NGN\n  const monthlyRevenue = subscription.revenue_data.mrr_impact;\n  \n  if (monthlyRevenue > 0) {\n    return Math.ceil(cac / monthlyRevenue);\n  }\n  return null;\n}\n\nfunction assessGrowthTrajectory(subscription) {\n  if (subscription.plan === 'taas') return 'exponential';\n  if (subscription.plan.includes('premium')) return 'steady';\n  if (subscription.plan.includes('daas')) return 'conversion_opportunity';\n  return 'stable';\n}\n\n// 🎯 AUTONOMOUS BUSINESS INSIGHTS\nconst businessInsights = {\n  // Revenue health\n  revenue_health: {\n    quality_score: revenueMetrics.revenue_quality_score,\n    sustainability: subscription.billing_cycle === 'annual' ? 'high' : 'medium',\n    growth_potential: revenueMetrics.expansion_potential\n  },\n  \n  // Customer success predictions\n  success_predictions: {\n    onboarding_success_probability: calculateOnboardingSuccessProbability(subscription),\n    feature_adoption_likelihood: predictFeatureAdoption(subscription),\n    retention_probability: calculateRetentionProbability(subscription)\n  },\n  \n  // Business actions\n  recommended_actions: generateBusinessActions(subscription, revenueMetrics),\n  \n  // Market insights\n  market_analysis: {\n    segment_performance: subscription.customer_segment,\n    price_optimization_opportunity: assessPriceOptimization(subscription),\n    competitive_position: 'leading' // Nigerian legal AI market\n  }\n};\n\nfunction calculateOnboardingSuccessProbability(subscription) {\n  let probability = 0.5; // Base 50%\n  \n  if (subscription.plan === 'taas') probability += 0.3; // Enterprise has high success\n  if (subscription.plan.includes('premium')) probability += 0.2;\n  if (subscription.billing_cycle === 'annual') probability += 0.15;\n  if (subscription.amount >= 12000) probability += 0.1;\n  \n  return Math.min(probability, 0.95);\n}\n\nfunction predictFeatureAdoption(subscription) {\n  const adoptionLikelihood = {\n    voice_chat: subscription.plan !== 'daas_single' ? 0.9 : 0.3,\n    document_generation: 0.95, // Core feature\n    emergency_response: subscription.plan.includes('premium') || subscription.plan === 'taas' ? 0.8 : 0.4,\n    lawyer_consultation: subscription.plan === 'taas' ? 0.9 : 0.6,\n    whatsapp_integration: 0.85 // Popular in Nigeria\n  };\n  \n  return adoptionLikelihood;\n}\n\nfunction calculateRetentionProbability(subscription) {\n  const retentionRates = {\n    taas: 0.95, // Enterprise customers are sticky\n    premium_annual: 0.85,\n    premium: 0.75,\n    daas_bundle: 0.4,\n    daas_single: 0.2\n  };\n  \n  return retentionRates[subscription.plan] || 0.5;\n}\n\nfunction generateBusinessActions(subscription, metrics) {\n  const actions = [];\n  \n  // High-value customer actions\n  if (subscription.plan === 'taas') {\n    actions.push('assign_dedicated_success_manager');\n    actions.push('schedule_quarterly_business_review');\n    actions.push('monitor_usage_metrics_weekly');\n  }\n  \n  // Premium customer actions\n  if (subscription.plan.includes('premium')) {\n    actions.push('enroll_in_premium_onboarding');\n    actions.push('provide_advanced_feature_training');\n    actions.push('monitor_feature_adoption');\n  }\n  \n  // Conversion opportunity actions\n  if (subscription.plan.includes('daas')) {\n    actions.push('track_usage_for_subscription_upsell');\n    actions.push('send_subscription_conversion_campaigns');\n    actions.push('provide_subscription_value_demonstration');\n  }\n  \n  // Churn risk mitigation\n  if (metrics.churn_risk_level === 'high') {\n    actions.push('implement_early_warning_monitoring');\n    actions.push('proactive_customer_success_outreach');\n  }\n  \n  return actions;\n}\n\nfunction assessPriceOptimization(subscription) {\n  if (subscription.plan === 'daas_single' && subscription.amount === 200) {\n    return 'test_bundle_pricing';\n  }\n  if (subscription.plan === 'premium' && subscription.amount === 1000) {\n    return 'test_annual_discount';\n  }\n  return 'current_pricing_optimal';\n}\n\n// 🚀 GROWTH OPPORTUNITIES\nconst growthOpportunities = {\n  immediate_opportunities: [\n    {\n      type: 'upsell',\n      target: subscription.plan === 'premium' ? 'taas' : 'premium',\n      probability: subscription.plan === 'premium' ? 0.15 : 0.3,\n      potential_value: subscription.plan === 'premium' ? 49000 : 11000,\n      timeline: '90_days'\n    },\n    {\n      type: 'feature_expansion',\n      target: 'additional_emergency_contacts',\n      probability: 0.6,\n      potential_value: 500,\n      timeline: '30_days'\n    }\n  ],\n  \n  long_term_opportunities: [\n    {\n      type: 'market_expansion',\n      target: 'other_west_african_countries',\n      timeline: '12_months',\n      potential_multiplier: 3\n    },\n    {\n      type: 'product_expansion',\n      target: 'business_legal_suite',\n      timeline: '6_months',\n      potential_arr_addition: 100000\n    }\n  ]\n};\n\nconst analyticsPackage = {\n  subscription_id: subscription.subscription_id,\n  customer_email: subscription.customer_email,\n  revenue_metrics: revenueMetrics,\n  business_insights: businessInsights,\n  growth_opportunities: growthOpportunities,\n  generated_at: now.toISOString(),\n  next_review_date: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days\n};\n\nconsole.log(`📊 Revenue analytics generated: ${subscription.plan} - ₦${subscription.amount} ARR impact`);\n\nreturn [{ json: analyticsPackage }];"
+      },
+      "id": "revenue-analytics",
+      "name": "📊 Revenue Intelligence Engine",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1400, 100]
+    }
+  ],
+  "connections": {
+    "flutterwave-webhook": {
+      "main": [
+        [
+          {
+            "node": "payment-security-processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "payment-security-processing": {
+      "main": [
+        [
+          {
+            "node": "store-payment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "store-payment": {
+      "main": [
+        [
+          {
+            "node": "check-payment-success",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "check-failed-payment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check-payment-success": {
+      "main": [
+        [
+          {
+            "node": "subscription-activation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "check-failed-payment": {
+      "main": [
+        [
+          {
+            "node": "failed-payment-recovery",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "subscription-activation": {
+      "main": [
+        [
+          {
+            "node": "store-subscription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "store-subscription": {
+      "main": [
+        [
+          {
+            "node": "revenue-analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["revenue", "payments", "autonomous"],
+  "triggerCount": 1,
+  "updatedAt": "2025-06-01T00:00:00.000Z",
+  "versionId": "revenue-v1"
+}

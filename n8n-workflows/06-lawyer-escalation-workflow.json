@@ -1,0 +1,974 @@
+{
+  "name": "MISS Legal AI - Lawyer Escalation & Consultation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lawyer-escalation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "law1-lawyer-webhook",
+      "name": "Lawyer Escalation Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "lawyer-escalation-nigeria"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "sessionId",
+              "value": "={{ $json.sessionId }}"
+            },
+            {
+              "name": "userId",
+              "value": "={{ $json.userId }}"
+            },
+            {
+              "name": "legalArea",
+              "value": "={{ $json.legalArea || 'general' }}"
+            },
+            {
+              "name": "urgency",
+              "value": "={{ $json.urgency || 'normal' }}"
+            },
+            {
+              "name": "transcript",
+              "value": "={{ $json.transcript }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $json.language || 'english' }}"
+            },
+            {
+              "name": "preferredGender",
+              "value": "={{ $json.preferredGender || 'any' }}"
+            },
+            {
+              "name": "maxBudget",
+              "value": "={{ $json.maxBudget || 0 }}"
+            },
+            {
+              "name": "consultationType",
+              "value": "={{ $json.consultationType || 'voice_call' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "law2-extract-escalation-data",
+      "name": "Extract Escalation Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/users?id=eq.{{ $json.userId }}&select=subscription_tier,lawyer_consultations_used_this_month,subscription_limits,full_name,email,phone,preferred_language",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "law3-check-user-eligibility",
+      "name": "Check User Eligibility",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json[0].lawyer_consultations_used_this_month < $json[0].subscription_limits.lawyer_consultations_per_month || $json[0].subscription_limits.lawyer_consultations_per_month === -1 }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "law4-validate-consultation-limits",
+      "name": "Validate Consultation Limits",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/lawyers?active=eq.true&specializations=cs.{{{ $('Extract Escalation Data').item.json.legalArea }}}&languages=cs.{{{ $('Extract Escalation Data').item.json.language }}}&order=rating.desc,consultation_fee.asc",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "law5-find-available-lawyers",
+      "name": "Find Available Lawyers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "law6-split-lawyers",
+      "name": "Split Available Lawyers",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1340,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.is_available === true }}",
+              "value2": true
+            }
+          ],
+          "number": [
+            {
+              "value1": "={{ $json.consultation_fee }}",
+              "operation": "smallerEqual",
+              "value2": "={{ $('Extract Escalation Data').item.json.maxBudget || 50000 }}"
+            }
+          ],
+          "string": [
+            {
+              "value1": "={{ $json.gender }}",
+              "operation": "equal",
+              "value2": "={{ $('Extract Escalation Data').item.json.preferredGender }}"
+            }
+          ]
+        },
+        "combineOperation": "any"
+      },
+      "id": "law7-filter-suitable-lawyers",
+      "name": "Filter Suitable Lawyers",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/consultations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "={{ $randomString(16) }}"
+            },
+            {
+              "name": "user_id",
+              "value": "={{ $('Extract Escalation Data').item.json.userId }}"
+            },
+            {
+              "name": "lawyer_id",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "session_id",
+              "value": "={{ $('Extract Escalation Data').item.json.sessionId }}"
+            },
+            {
+              "name": "legal_area",
+              "value": "{{ $('Extract Escalation Data').item.json.legalArea }}"
+            },
+            {
+              "name": "urgency",
+              "value": "{{ $('Extract Escalation Data').item.json.urgency }}"
+            },
+            {
+              "name": "consultation_type",
+              "value": "{{ $('Extract Escalation Data').item.json.consultationType }}"
+            },
+            {
+              "name": "language",
+              "value": "{{ $('Extract Escalation Data').item.json.language }}"
+            },
+            {
+              "name": "consultation_fee",
+              "value": "={{ $json.consultation_fee }}"
+            },
+            {
+              "name": "status",
+              "value": "pending"
+            },
+            {
+              "name": "user_context",
+              "value": "{{ $('Extract Escalation Data').item.json.transcript }}"
+            },
+            {
+              "name": "scheduled_for",
+              "value": "={{ $('Extract Escalation Data').item.json.urgency === 'urgent' ? new Date(new Date().getTime() + 30*60000).toISOString() : new Date(new Date().getTime() + 24*60*60000).toISOString() }}"
+            },
+            {
+              "name": "created_at",
+              "value": "={{ new Date().toISOString() }}"
+            },
+            {
+              "name": "metadata",
+              "value": "={{ JSON.stringify({ escalated_from_voice: true, ai_context: $('Extract Escalation Data').item.json.transcript }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "law8-create-consultation-request",
+      "name": "Create Consultation Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1780,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "lawyerName",
+              "value": "={{ $('Filter Suitable Lawyers').item.json.full_name }}"
+            },
+            {
+              "name": "lawyerSpecializations",
+              "value": "={{ $('Filter Suitable Lawyers').item.json.specializations.join(', ') }}"
+            },
+            {
+              "name": "consultationFee",
+              "value": "={{ $('Filter Suitable Lawyers').item.json.consultation_fee }}"
+            },
+            {
+              "name": "lawyerRating",
+              "value": "={{ $('Filter Suitable Lawyers').item.json.rating }}"
+            },
+            {
+              "name": "scheduledTime",
+              "value": "={{ $json.scheduled_for }}"
+            },
+            {
+              "name": "consultationId",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "lawyerNotificationMessage",
+              "value": "={% set language = $('Extract Escalation Data').item.json.language %}\n{% if language === 'yoruba' %}\n📞 IGBESOKE AGBEJORO TUNTUN!\n\nOnibara: {{ $('Check User Eligibility').item.json[0].full_name }}\nOro: {{ $('Extract Escalation Data').item.json.legalArea }}\nKiakia: {{ $('Extract Escalation Data').item.json.urgency === 'urgent' ? 'Kiakia' : 'Deede' }}\nAkoko: {{ new Date($json.scheduled_for).toLocaleString('yo-NG') }}\nOwo: ₦{{ $('Filter Suitable Lawyers').item.json.consultation_fee }}\n\nOro ti o sọ:\n\"{{ $('Extract Escalation Data').item.json.transcript.substring(0, 200) }}...\"\n\nGba tabi ko si app MISS Legal AI.\n{% elif language === 'hausa' %}\n📞 SABON BUKATAR SHAWARWARI!\n\nAbokin ciniki: {{ $('Check User Eligibility').item.json[0].full_name }}\nFanni: {{ $('Extract Escalation Data').item.json.legalArea }}\nGaggawa: {{ $('Extract Escalation Data').item.json.urgency === 'urgent' ? 'Gaggawa' : 'Na yau da kullun' }}\nLokaci: {{ new Date($json.scheduled_for).toLocaleString('ha-NG') }}\nKuɗi: ₦{{ $('Filter Suitable Lawyers').item.json.consultation_fee }}\n\nAbin da ya faɗa:\n\"{{ $('Extract Escalation Data').item.json.transcript.substring(0, 200) }}...\"\n\nKarɓa ko ƙi a cikin app na MISS Legal AI.\n{% elif language === 'igbo' %}\n📞 ARỊRỊỌ NDỤMỌDỤ ỌHỤRỤ!\n\nOnye ahịa: {{ $('Check User Eligibility').item.json[0].full_name }}\nMpaghara: {{ $('Extract Escalation Data').item.json.legalArea }}\nNgwa ngwa: {{ $('Extract Escalation Data').item.json.urgency === 'urgent' ? 'Ngwa ngwa' : 'Nkịtị' }}\nOge: {{ new Date($json.scheduled_for).toLocaleString('ig-NG') }}\nEgo: ₦{{ $('Filter Suitable Lawyers').item.json.consultation_fee }}\n\nIhe o kwuru:\n\"{{ $('Extract Escalation Data').item.json.transcript.substring(0, 200) }}...\"\n\nNabata ma ọ bụ jụ na app MISS Legal AI.\n{% else %}\n📞 NEW CONSULTATION REQUEST!\n\nClient: {{ $('Check User Eligibility').item.json[0].full_name }}\nArea: {{ $('Extract Escalation Data').item.json.legalArea }}\nUrgency: {{ $('Extract Escalation Data').item.json.urgency }}\nScheduled: {{ new Date($json.scheduled_for).toLocaleString('en-NG') }}\nFee: ₦{{ $('Filter Suitable Lawyers').item.json.consultation_fee }}\n\nClient context:\n\"{{ $('Extract Escalation Data').item.json.transcript.substring(0, 200) }}...\"\n\nConsultation ID: {{ $json.id }}\n\nAccept or decline in your MISS Legal AI lawyer portal.\n{% endif %}"
+            },
+            {
+              "name": "userNotificationMessage",
+              "value": "={% set language = $('Extract Escalation Data').item.json.language %}\n{% if language === 'yoruba' %}\n✅ AGBEJORO TI RII!\n\nEmi ti ri agbejoro kan fun yin.\n\nAlaye Agbejoro:\n👨‍💼 Orukọ: {{ $('Filter Suitable Lawyers').item.json.full_name }}\n⭐ Ipele: {{ $('Filter Suitable Lawyers').item.json.rating }}/5\n🎯 Agbegbe: {{ $('Filter Suitable Lawyers').item.json.specializations.join(', ') }}\n💰 Owo: ₦{{ $('Filter Suitable Lawyers').item.json.consultation_fee }}\n⏰ Akoko: {{ new Date($json.scheduled_for).toLocaleString('yo-NG') }}\n\nAgbejoro naa yoo pe yin ni {{ $('Extract Escalation Data').item.json.urgency === 'urgent' ? '30 iṣẹju' : 'ọjọ kan' }}.\n\nMISS Legal AI\n{% elif language === 'hausa' %}\n✅ AN SAMI LAUYOYI!\n\nNa sami lauya maku.\n\nBayanan Shawarwari:\n👨‍💼 Suna: {{ $('Filter Suitable Lawyers').item.json.full_name }}\n⭐ Matsayi: {{ $('Filter Suitable Lawyers').item.json.rating }}/5\n🎯 Fannoni: {{ $('Filter Suitable Lawyers').item.json.specializations.join(', ') }}\n💰 Kuɗi: ₦{{ $('Filter Suitable Lawyers').item.json.consultation_fee }}\n⏰ Lokaci: {{ new Date($json.scheduled_for).toLocaleString('ha-NG') }}\n\nLauyan zai tuntuɓe ku a cikin {{ $('Extract Escalation Data').item.json.urgency === 'urgent' ? 'minti 30' : 'kwana ɗaya' }}.\n\nMISS Legal AI\n{% elif language === 'igbo' %}\n✅ ACHỌTARA ỌKÀIKPE!\n\nAchọtara m ọkàikpe maka gị.\n\nNkọwa Ndụmọdụ:\n👨‍💼 Aha: {{ $('Filter Suitable Lawyers').item.json.full_name }}\n⭐ Ọkwa: {{ $('Filter Suitable Lawyers').item.json.rating }}/5\n🎯 Mpaghara: {{ $('Filter Suitable Lawyers').item.json.specializations.join(', ') }}\n💰 Ego: ₦{{ $('Filter Suitable Lawyers').item.json.consultation_fee }}\n⏰ Oge: {{ new Date($json.scheduled_for).toLocaleString('ig-NG') }}\n\nỌkàikpe ahụ ga-akpọ gị n'ime {{ $('Extract Escalation Data').item.json.urgency === 'urgent' ? 'nkeji 30' : 'ụbọchị otu' }}.\n\nMISS Legal AI\n{% else %}\n✅ LAWYER FOUND!\n\nI've found a qualified lawyer for your consultation.\n\nConsultation Details:\n👨‍💼 Name: {{ $('Filter Suitable Lawyers').item.json.full_name }}\n⭐ Rating: {{ $('Filter Suitable Lawyers').item.json.rating }}/5\n🎯 Specializations: {{ $('Filter Suitable Lawyers').item.json.specializations.join(', ') }}\n💰 Fee: ₦{{ $('Filter Suitable Lawyers').item.json.consultation_fee }}\n⏰ Scheduled: {{ new Date($json.scheduled_for).toLocaleString('en-NG') }}\n🔢 Consultation ID: {{ $json.id }}\n\nThe lawyer will contact you within {{ $('Extract Escalation Data').item.json.urgency === 'urgent' ? '30 minutes' : '24 hours' }}.\n\nYou'll receive a calendar invite and payment instructions shortly.\n\nMISS Legal AI\n{% endif %}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "law9-prepare-notifications",
+      "name": "Prepare Notifications",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "https://graph.facebook.com/v18.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.WHATSAPP_ACCESS_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "messaging_product",
+              "value": "whatsapp"
+            },
+            {
+              "name": "to",
+              "value": "={{ $('Filter Suitable Lawyers').item.json.phone.replace(/[^0-9]/g, '') }}"
+            },
+            {
+              "name": "type",
+              "value": "text"
+            },
+            {
+              "name": "text",
+              "value": "={ \"body\": \"{{ $json.lawyerNotificationMessage }}\" }"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "law10-notify-lawyer",
+      "name": "Notify Lawyer via WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2220,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "https://graph.facebook.com/v18.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.WHATSAPP_ACCESS_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "messaging_product",
+              "value": "whatsapp"
+            },
+            {
+              "name": "to",
+              "value": "={{ $('Check User Eligibility').item.json[0].phone.replace(/[^0-9]/g, '') }}"
+            },
+            {
+              "name": "type",
+              "value": "text"
+            },
+            {
+              "name": "text",
+              "value": "={ \"body\": \"{{ $json.userNotificationMessage }}\" }"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "law11-notify-user",
+      "name": "Notify User via WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2220,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "subject": "Lawyer Consultation Scheduled - {{ $('Prepare Notifications').item.json.lawyerName }}",
+        "message": "Dear {{ $('Check User Eligibility').item.json[0].full_name }},\n\nGreat news! I've found a qualified lawyer for your consultation.\n\nConsultation Details:\nLawyer: {{ $('Prepare Notifications').item.json.lawyerName }}\nRating: {{ $('Prepare Notifications').item.json.lawyerRating }}/5 stars\nSpecializations: {{ $('Prepare Notifications').item.json.lawyerSpecializations }}\nFee: ₦{{ $('Prepare Notifications').item.json.consultationFee }}\nScheduled: {{ new Date($('Prepare Notifications').item.json.scheduledTime).toLocaleString('en-NG') }}\nConsultation ID: {{ $('Prepare Notifications').item.json.consultationId }}\n\nNext Steps:\n1. You'll receive a calendar invite shortly\n2. Payment will be processed before the consultation\n3. The lawyer will contact you at the scheduled time\n\nYour consultation context has been shared with the lawyer to ensure they're prepared for your specific needs.\n\nIf you need to reschedule or have any questions, contact us at support@misslegai.com\n\nBest regards,\nMISS Legal AI Team",
+        "fromEmail": "consultations@misslegai.com",
+        "fromName": "MISS Legal AI Consultations",
+        "toEmail": "={{ $('Check User Eligibility').item.json[0].email }}",
+        "options": {
+          "attachments": "",
+          "ccEmail": "",
+          "bccEmail": "",
+          "replyTo": "support@misslegai.com"
+        }
+      },
+      "id": "law12-send-user-email",
+      "name": "Send User Email Confirmation",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        2220,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.BACKEND_API_URL }}/api/lawyers/calendar-invite",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.BACKEND_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "consultationId",
+              "value": "={{ $('Prepare Notifications').item.json.consultationId }}"
+            },
+            {
+              "name": "userEmail",
+              "value": "={{ $('Check User Eligibility').item.json[0].email }}"
+            },
+            {
+              "name": "lawyerEmail",
+              "value": "={{ $('Filter Suitable Lawyers').item.json.email }}"
+            },
+            {
+              "name": "scheduledTime",
+              "value": "={{ $('Prepare Notifications').item.json.scheduledTime }}"
+            },
+            {
+              "name": "consultationType",
+              "value": "={{ $('Extract Escalation Data').item.json.consultationType }}"
+            },
+            {
+              "name": "duration",
+              "value": 60
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "law13-create-calendar-invite",
+      "name": "Create Calendar Invite",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2440,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/users?id=eq.{{ $('Extract Escalation Data').item.json.userId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "lawyer_consultations_used_this_month",
+              "value": "={{ ($('Check User Eligibility').item.json[0].lawyer_consultations_used_this_month || 0) + 1 }}"
+            },
+            {
+              "name": "last_lawyer_consultation",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "law14-update-user-stats",
+      "name": "Update User Consultation Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2660,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "law15-schedule-reminder",
+      "name": "Schedule Consultation Reminder",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        2660,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/consultation_analytics",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "consultation_id",
+              "value": "={{ $('Prepare Notifications').item.json.consultationId }}"
+            },
+            {
+              "name": "user_id",
+              "value": "={{ $('Extract Escalation Data').item.json.userId }}"
+            },
+            {
+              "name": "lawyer_id",
+              "value": "={{ $('Filter Suitable Lawyers').item.json.id }}"
+            },
+            {
+              "name": "legal_area",
+              "value": "{{ $('Extract Escalation Data').item.json.legalArea }}"
+            },
+            {
+              "name": "urgency",
+              "value": "{{ $('Extract Escalation Data').item.json.urgency }}"
+            },
+            {
+              "name": "consultation_fee",
+              "value": "={{ $('Prepare Notifications').item.json.consultationFee }}"
+            },
+            {
+              "name": "escalation_method",
+              "value": "voice_to_lawyer"
+            },
+            {
+              "name": "language",
+              "value": "{{ $('Extract Escalation Data').item.json.language }}"
+            },
+            {
+              "name": "session_id",
+              "value": "{{ $('Extract Escalation Data').item.json.sessionId }}"
+            },
+            {
+              "name": "created_at",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "law16-log-consultation-analytics",
+      "name": "Log Consultation Analytics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2880,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: true,\n  consultationId: $('Prepare Notifications').item.json.consultationId,\n  lawyer: {\n    name: $('Prepare Notifications').item.json.lawyerName,\n    rating: $('Prepare Notifications').item.json.lawyerRating,\n    specializations: $('Prepare Notifications').item.json.lawyerSpecializations.split(', '),\n    fee: $('Prepare Notifications').item.json.consultationFee\n  },\n  scheduledTime: $('Prepare Notifications').item.json.scheduledTime,\n  urgency: $('Extract Escalation Data').item.json.urgency,\n  status: 'scheduled',\n  message: $('Extract Escalation Data').item.json.language === 'yoruba' ? 'Agbejoro ti seto' : $('Extract Escalation Data').item.json.language === 'hausa' ? 'An shirya shawarwari' : $('Extract Escalation Data').item.json.language === 'igbo' ? 'Ahaziri ndụmọdụ' : 'Consultation scheduled successfully'\n}) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "law17-consultation-scheduled-response",
+      "name": "Consultation Scheduled Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        3100,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.BACKEND_API_URL }}/api/payment/create-consultation-payment",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.BACKEND_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "userId",
+              "value": "={{ $('Extract Escalation Data').item.json.userId }}"
+            },
+            {
+              "name": "consultationId",
+              "value": "={{ $('Prepare Notifications').item.json.consultationId }}"
+            },
+            {
+              "name": "amount",
+              "value": "={{ $('Prepare Notifications').item.json.consultationFee }}"
+            },
+            {
+              "name": "description",
+              "value": "Legal consultation with {{ $('Prepare Notifications').item.json.lawyerName }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "law18-setup-consultation-payment",
+      "name": "Setup Consultation Payment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2880,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: false,\n  error: 'No suitable lawyers available',\n  legalArea: $('Extract Escalation Data').item.json.legalArea,\n  language: $('Extract Escalation Data').item.json.language,\n  maxBudget: $('Extract Escalation Data').item.json.maxBudget,\n  suggestions: [\n    'Try increasing your budget',\n    'Consider general legal consultation',\n    'Schedule for later when more lawyers are available'\n  ],\n  message: $('Extract Escalation Data').item.json.language === 'yoruba' ? 'Ko si agbejoro to baamu' : $('Extract Escalation Data').item.json.language === 'hausa' ? 'Babu lauya mai dacewa' : $('Extract Escalation Data').item.json.language === 'igbo' ? 'Enweghị ọkàikpe kwesịrị ekwesị' : 'No suitable lawyers available at this time'\n}) }}",
+        "options": {
+          "responseCode": 404
+        }
+      },
+      "id": "law19-no-lawyers-response",
+      "name": "No Lawyers Available Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: false,\n  error: 'Consultation limit exceeded',\n  currentUsage: $json[0].lawyer_consultations_used_this_month,\n  limit: $json[0].subscription_limits.lawyer_consultations_per_month,\n  subscriptionTier: $json[0].subscription_tier,\n  upgradeUrl: 'https://misslegai.com/pricing',\n  message: $('Extract Escalation Data').item.json.language === 'yoruba' ? 'O ti lo gbogbo igbimọ agbẹjọro fun oṣu yi' : $('Extract Escalation Data').item.json.language === 'hausa' ? 'Kun cika iyakar shawarwari na wannan wata' : $('Extract Escalation Data').item.json.language === 'igbo' ? 'I rịala oke ndụmọdụ nke ọnwa a' : 'Monthly consultation limit reached'\n}) }}",
+        "options": {
+          "responseCode": 429
+        }
+      },
+      "id": "law20-limit-exceeded-response",
+      "name": "Consultation Limit Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Lawyer Escalation Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Escalation Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Escalation Data": {
+      "main": [
+        [
+          {
+            "node": "Check User Eligibility",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check User Eligibility": {
+      "main": [
+        [
+          {
+            "node": "Validate Consultation Limits",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Consultation Limits": {
+      "main": [
+        [
+          {
+            "node": "Find Available Lawyers",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Consultation Limit Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Available Lawyers": {
+      "main": [
+        [
+          {
+            "node": "Split Available Lawyers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Available Lawyers": {
+      "main": [
+        [
+          {
+            "node": "Filter Suitable Lawyers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Suitable Lawyers": {
+      "main": [
+        [
+          {
+            "node": "Create Consultation Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Lawyers Available Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Consultation Request": {
+      "main": [
+        [
+          {
+            "node": "Prepare Notifications",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Notifications": {
+      "main": [
+        [
+          {
+            "node": "Notify Lawyer via WhatsApp",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notify User via WhatsApp",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send User Email Confirmation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create Calendar Invite",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Calendar Invite": {
+      "main": [
+        [
+          {
+            "node": "Update User Consultation Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update User Consultation Stats": {
+      "main": [
+        [
+          {
+            "node": "Log Consultation Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Consultation Analytics": {
+      "main": [
+        [
+          {
+            "node": "Consultation Scheduled Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Setup Consultation Payment": {
+      "main": [
+        [
+          {
+            "node": "Consultation Scheduled Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "1",
+  "meta": {
+    "instanceId": "lawyer-escalation-nigeria"
+  },
+  "id": "miss-legal-ai-lawyer-escalation",
+  "tags": [
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "lawyer-consultation",
+      "name": "Lawyer Consultation"
+    },
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "miss-legal-ai",
+      "name": "MISS Legal AI"
+    }
+  ]
+}

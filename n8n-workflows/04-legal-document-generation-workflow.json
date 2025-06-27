@@ -1,0 +1,981 @@
+{
+  "name": "MISS Legal AI - Legal Document Generation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "document-generation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "doc1-document-webhook",
+      "name": "Document Generation Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "document-generation-nigeria"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "sessionId",
+              "value": "={{ $json.sessionId }}"
+            },
+            {
+              "name": "userId",
+              "value": "={{ $json.userId }}"
+            },
+            {
+              "name": "documentType",
+              "value": "={{ $json.documentType }}"
+            },
+            {
+              "name": "transcript",
+              "value": "={{ $json.transcript }}"
+            },
+            {
+              "name": "extractedData",
+              "value": "={{ $json.extractedData }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $json.language || 'english' }}"
+            },
+            {
+              "name": "state",
+              "value": "={{ $json.state || 'Lagos' }}"
+            },
+            {
+              "name": "templateId",
+              "value": "={{ $json.templateId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "doc2-extract-document-data",
+      "name": "Extract Document Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/users?id=eq.{{ $json.userId }}&select=subscription_tier,documents_generated_today,subscription_limits",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "doc3-check-user-limits",
+      "name": "Check User Subscription Limits",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json[0].documents_generated_today < $json[0].subscription_limits.documents_per_day }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "doc4-validate-limits",
+      "name": "Validate Usage Limits",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.BACKEND_API_URL }}/api/documents/voice-extract",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.BACKEND_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "documentType",
+              "value": "={{ $('Extract Document Data').item.json.documentType }}"
+            },
+            {
+              "name": "transcript",
+              "value": "={{ $('Extract Document Data').item.json.transcript }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $('Extract Document Data').item.json.language }}"
+            },
+            {
+              "name": "state",
+              "value": "={{ $('Extract Document Data').item.json.state }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "doc5-extract-voice-data",
+      "name": "Extract Data from Voice",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "extractedData",
+              "value": "={{ JSON.stringify($json.extractedData) }}"
+            },
+            {
+              "name": "confidence",
+              "value": "={{ $json.confidence }}"
+            },
+            {
+              "name": "isComplete",
+              "value": "={{ $json.validation.isComplete }}"
+            },
+            {
+              "name": "missingFields",
+              "value": "={{ JSON.stringify($json.validation.missingRequiredFields) }}"
+            },
+            {
+              "name": "clarificationQuestions",
+              "value": "={{ JSON.stringify($json.clarificationQuestions) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "doc6-process-extraction-results",
+      "name": "Process Extraction Results",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.isComplete === 'true' || $json.isComplete === true }}",
+              "value2": true
+            }
+          ],
+          "number": [
+            {
+              "value1": "={{ parseFloat($json.confidence) }}",
+              "operation": "largerEqual",
+              "value2": 0.6
+            }
+          ]
+        },
+        "combineOperation": "all"
+      },
+      "id": "doc7-check-data-completeness",
+      "name": "Check Data Completeness",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.BACKEND_API_URL }}/api/documents/validate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.BACKEND_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "documentType",
+              "value": "={{ $('Extract Document Data').item.json.documentType }}"
+            },
+            {
+              "name": "data",
+              "value": "={{ $('Process Extraction Results').item.json.extractedData }}"
+            },
+            {
+              "name": "state",
+              "value": "={{ $('Extract Document Data').item.json.state }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $('Extract Document Data').item.json.language }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "doc8-validate-legal-compliance",
+      "name": "Validate Legal Compliance",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1780,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.BACKEND_API_URL }}/api/documents/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.BACKEND_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "documentType",
+              "value": "={{ $('Extract Document Data').item.json.documentType }}"
+            },
+            {
+              "name": "extractedData",
+              "value": "={{ $('Process Extraction Results').item.json.extractedData }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $('Extract Document Data').item.json.language }}"
+            },
+            {
+              "name": "state",
+              "value": "={{ $('Extract Document Data').item.json.state }}"
+            },
+            {
+              "name": "userId",
+              "value": "={{ $('Extract Document Data').item.json.userId }}"
+            },
+            {
+              "name": "templateId",
+              "value": "={{ $('Extract Document Data').item.json.templateId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "doc9-generate-document",
+      "name": "Generate Legal Document",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2000,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/documents",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "={{ $json.document.id }}"
+            },
+            {
+              "name": "user_id",
+              "value": "={{ $('Extract Document Data').item.json.userId }}"
+            },
+            {
+              "name": "title",
+              "value": "={{ $json.document.title }}"
+            },
+            {
+              "name": "document_type",
+              "value": "={{ $json.document.documentType }}"
+            },
+            {
+              "name": "content",
+              "value": "={{ $json.document.content }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $json.document.language }}"
+            },
+            {
+              "name": "state",
+              "value": "={{ $json.document.state }}"
+            },
+            {
+              "name": "status",
+              "value": "{{ $json.document.status }}"
+            },
+            {
+              "name": "version",
+              "value": "={{ $json.document.version }}"
+            },
+            {
+              "name": "metadata",
+              "value": "={{ JSON.stringify($json.document.metadata) }}"
+            },
+            {
+              "name": "generated_via",
+              "value": "voice_to_document"
+            },
+            {
+              "name": "session_id",
+              "value": "={{ $('Extract Document Data').item.json.sessionId }}"
+            },
+            {
+              "name": "created_at",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "doc10-save-document-record",
+      "name": "Save Document to Database",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2220,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/users?id=eq.{{ $('Extract Document Data').item.json.userId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "documents_generated_today",
+              "value": "={{ ($('Check User Subscription Limits').item.json[0].documents_generated_today || 0) + 1 }}"
+            },
+            {
+              "name": "total_documents_generated",
+              "value": "={{ ($('Check User Subscription Limits').item.json[0].total_documents_generated || 0) + 1 }}"
+            },
+            {
+              "name": "last_document_generated",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "doc11-update-user-stats",
+      "name": "Update User Document Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2440,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "notificationMessage",
+              "value": "={% if $('Extract Document Data').item.json.language === 'yoruba' %}\n✅ IBANISỌRỌ TI PARI!\n\nIwe {{ $('Extract Document Data').item.json.documentType === 'tenancy_agreement' ? 'Adehun Ile' : $('Extract Document Data').item.json.documentType === 'affidavit' ? 'Affidavit' : 'Power of Attorney' }} ti wa ni pipa.\n\nAkọle: {{ $('Generate Legal Document').item.json.document.title }}\nIgba: {{ new Date().toLocaleString('yo-NG') }}\n\nO le gba iwe yii lọwọ lati apo rẹ tabi ranran PDF.\n\nMISS Legal AI\n{% elif $('Extract Document Data').item.json.language === 'hausa' %}\n✅ AN GAMA ƘIRƘIRAR TAKARDU!\n\nTakardar {{ $('Extract Document Data').item.json.documentType === 'tenancy_agreement' ? 'Yarjejeniyar Haya' : $('Extract Document Data').item.json.documentType === 'affidavit' ? 'Affidavit' : 'Power of Attorney' }} ta shirya.\n\nTaken: {{ $('Generate Legal Document').item.json.document.title }}\nLokaci: {{ new Date().toLocaleString('ha-NG') }}\n\nKuna iya samun wannan takarda daga asusu ko sauke PDF.\n\nMISS Legal AI\n{% elif $('Extract Document Data').item.json.language === 'igbo' %}\n✅ EMECHARA MMEPỤTA AKWỤKWỌ!\n\nAkwụkwọ {{ $('Extract Document Data').item.json.documentType === 'tenancy_agreement' ? 'Nkwekọrịta Mgbazinye' : $('Extract Document Data').item.json.documentType === 'affidavit' ? 'Affidavit' : 'Power of Attorney' }} adịla njikere.\n\nIsi: {{ $('Generate Legal Document').item.json.document.title }}\nOge: {{ new Date().toLocaleString('ig-NG') }}\n\nỊ nwere ike nweta akwụkwọ a site na akaụntụ gị ma ọ bụ budata PDF.\n\nMISS Legal AI\n{% else %}\n✅ DOCUMENT GENERATION COMPLETE!\n\nYour {{ $('Extract Document Data').item.json.documentType === 'tenancy_agreement' ? 'Tenancy Agreement' : $('Extract Document Data').item.json.documentType === 'affidavit' ? 'Affidavit' : 'Power of Attorney' }} document has been successfully generated.\n\nTitle: {{ $('Generate Legal Document').item.json.document.title }}\nGenerated: {{ new Date().toLocaleString('en-NG') }}\nConfidence: {{ $('Process Extraction Results').item.json.confidence }}%\n\nYou can access this document from your account or download the PDF.\n\nDocument ID: {{ $('Generate Legal Document').item.json.document.id }}\n\nMISS Legal AI\n{% endif %}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "doc12-prepare-notification",
+      "name": "Prepare Success Notification",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        2660,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "https://graph.facebook.com/v18.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.WHATSAPP_ACCESS_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "messaging_product",
+              "value": "whatsapp"
+            },
+            {
+              "name": "to",
+              "value": "={{ $('Check User Subscription Limits').item.json[0].phone.replace(/[^0-9]/g, '') }}"
+            },
+            {
+              "name": "type",
+              "value": "text"
+            },
+            {
+              "name": "text",
+              "value": "={ \"body\": \"{{ $json.notificationMessage }}\" }"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "doc13-send-whatsapp-notification",
+      "name": "Send WhatsApp Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2880,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "subject": "Document Generated - {{ $('Generate Legal Document').item.json.document.title }}",
+        "message": "Your {{ $('Extract Document Data').item.json.documentType === 'tenancy_agreement' ? 'Tenancy Agreement' : $('Extract Document Data').item.json.documentType === 'affidavit' ? 'Affidavit' : 'Power of Attorney' }} has been successfully generated.\n\nDocument Details:\nTitle: {{ $('Generate Legal Document').item.json.document.title }}\nType: {{ $('Extract Document Data').item.json.documentType }}\nLanguage: {{ $('Extract Document Data').item.json.language }}\nState: {{ $('Extract Document Data').item.json.state }}\nGenerated: {{ new Date().toLocaleString('en-NG') }}\n\nYou can access your document at: https://misslegai.com/documents/{{ $('Generate Legal Document').item.json.document.id }}\n\nBest regards,\nMISS Legal AI Team",
+        "fromEmail": "documents@misslegai.com",
+        "fromName": "MISS Legal AI Documents",
+        "toEmail": "={{ $('Check User Subscription Limits').item.json[0].email }}",
+        "options": {
+          "attachments": "",
+          "ccEmail": "",
+          "bccEmail": "",
+          "replyTo": "support@misslegai.com"
+        }
+      },
+      "id": "doc14-send-email-notification",
+      "name": "Send Email Notification",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/document_analytics",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "document_id",
+              "value": "={{ $('Generate Legal Document').item.json.document.id }}"
+            },
+            {
+              "name": "user_id",
+              "value": "={{ $('Extract Document Data').item.json.userId }}"
+            },
+            {
+              "name": "document_type",
+              "value": "={{ $('Extract Document Data').item.json.documentType }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $('Extract Document Data').item.json.language }}"
+            },
+            {
+              "name": "state",
+              "value": "={{ $('Extract Document Data').item.json.state }}"
+            },
+            {
+              "name": "generation_method",
+              "value": "voice_to_document"
+            },
+            {
+              "name": "confidence_score",
+              "value": "={{ parseFloat($('Process Extraction Results').item.json.confidence) }}"
+            },
+            {
+              "name": "processing_time_ms",
+              "value": "={{ $('Generate Legal Document').item.json.processingTimeMs || 0 }}"
+            },
+            {
+              "name": "legal_compliance",
+              "value": "={{ $('Validate Legal Compliance').item.json.isCompliant }}"
+            },
+            {
+              "name": "session_id",
+              "value": "={{ $('Extract Document Data').item.json.sessionId }}"
+            },
+            {
+              "name": "created_at",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "doc15-log-analytics",
+      "name": "Log Document Analytics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        3100,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.BACKEND_API_URL }}/api/voice/clarification-needed",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.BACKEND_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "sessionId",
+              "value": "={{ $('Extract Document Data').item.json.sessionId }}"
+            },
+            {
+              "name": "userId",
+              "value": "={{ $('Extract Document Data').item.json.userId }}"
+            },
+            {
+              "name": "documentType",
+              "value": "={{ $('Extract Document Data').item.json.documentType }}"
+            },
+            {
+              "name": "extractedData",
+              "value": "={{ $('Process Extraction Results').item.json.extractedData }}"
+            },
+            {
+              "name": "missingFields",
+              "value": "={{ $('Process Extraction Results').item.json.missingFields }}"
+            },
+            {
+              "name": "clarificationQuestions",
+              "value": "={{ $('Process Extraction Results').item.json.clarificationQuestions }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $('Extract Document Data').item.json.language }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "doc16-request-clarification",
+      "name": "Request Data Clarification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1780,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: true,\n  documentId: $('Generate Legal Document').item.json.document.id,\n  title: $('Generate Legal Document').item.json.document.title,\n  status: 'generated',\n  confidence: $('Process Extraction Results').item.json.confidence,\n  legalCompliance: $('Validate Legal Compliance').item.json.isCompliant,\n  downloadUrl: `https://misslegai.com/documents/${$('Generate Legal Document').item.json.document.id}/download`,\n  message: $('Extract Document Data').item.json.language === 'yoruba' ? 'Iwe ti wa ni didanu' : $('Extract Document Data').item.json.language === 'hausa' ? 'Takardar ta shirya' : $('Extract Document Data').item.json.language === 'igbo' ? 'Emepụtara akwụkwọ' : 'Document generated successfully'\n}) }}",
+        "options": {
+          "responseCode": 201
+        }
+      },
+      "id": "doc17-success-response",
+      "name": "Document Generated Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        3320,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: false,\n  status: 'clarification_needed',\n  extractedData: JSON.parse($('Process Extraction Results').item.json.extractedData),\n  missingFields: JSON.parse($('Process Extraction Results').item.json.missingFields),\n  clarificationQuestions: JSON.parse($('Process Extraction Results').item.json.clarificationQuestions),\n  confidence: $('Process Extraction Results').item.json.confidence,\n  message: $('Extract Document Data').item.json.language === 'yoruba' ? 'A nilo alaye diẹ sii' : $('Extract Document Data').item.json.language === 'hausa' ? 'Muna buƙatar ƙarin bayani' : $('Extract Document Data').item.json.language === 'igbo' ? 'Anyị chọrọ nkọwa ndị ọzọ' : 'Additional information needed for document generation'\n}) }}",
+        "options": {
+          "responseCode": 202
+        }
+      },
+      "id": "doc18-clarification-response",
+      "name": "Clarification Needed Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: false,\n  error: 'Document generation limit exceeded',\n  currentUsage: $json[0].documents_generated_today,\n  limit: $json[0].subscription_limits.documents_per_day,\n  subscriptionTier: $json[0].subscription_tier,\n  upgradeUrl: 'https://misslegai.com/pricing',\n  message: $('Extract Document Data').item.json.language === 'yoruba' ? 'O ti lo gbogbo iwe ti o le ṣẹda fun oni' : $('Extract Document Data').item.json.language === 'hausa' ? 'Kun cika iyakar takardu na yau' : $('Extract Document Data').item.json.language === 'igbo' ? 'I rịala oke akwụkwọ nke ụbọchị taa' : 'Daily document generation limit reached'\n}) }}",
+        "options": {
+          "responseCode": 429
+        }
+      },
+      "id": "doc19-limit-exceeded-response",
+      "name": "Limit Exceeded Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Document Generation Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Document Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Document Data": {
+      "main": [
+        [
+          {
+            "node": "Check User Subscription Limits",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check User Subscription Limits": {
+      "main": [
+        [
+          {
+            "node": "Validate Usage Limits",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Usage Limits": {
+      "main": [
+        [
+          {
+            "node": "Extract Data from Voice",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Limit Exceeded Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Data from Voice": {
+      "main": [
+        [
+          {
+            "node": "Process Extraction Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Extraction Results": {
+      "main": [
+        [
+          {
+            "node": "Check Data Completeness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Data Completeness": {
+      "main": [
+        [
+          {
+            "node": "Validate Legal Compliance",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Request Data Clarification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Legal Compliance": {
+      "main": [
+        [
+          {
+            "node": "Generate Legal Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Legal Document": {
+      "main": [
+        [
+          {
+            "node": "Save Document to Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Document to Database": {
+      "main": [
+        [
+          {
+            "node": "Update User Document Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update User Document Stats": {
+      "main": [
+        [
+          {
+            "node": "Prepare Success Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Success Notification": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Notification",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Email Notification",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Document Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Document Analytics": {
+      "main": [
+        [
+          {
+            "node": "Document Generated Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request Data Clarification": {
+      "main": [
+        [
+          {
+            "node": "Clarification Needed Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "1",
+  "meta": {
+    "instanceId": "document-generation-nigeria"
+  },
+  "id": "miss-legal-ai-document-generation",
+  "tags": [
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "document-generation",
+      "name": "Document Generation"
+    },
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "miss-legal-ai",
+      "name": "MISS Legal AI"
+    }
+  ]
+}

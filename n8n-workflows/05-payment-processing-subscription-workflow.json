@@ -1,0 +1,915 @@
+{
+  "name": "MISS Legal AI - Payment Processing & Subscription Management",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "payment-callback",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "pay1-payment-webhook",
+      "name": "Flutterwave Payment Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "payment-callback-nigeria"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "eventType",
+              "value": "={{ $json.event }}"
+            },
+            {
+              "name": "transactionId",
+              "value": "={{ $json.data.id }}"
+            },
+            {
+              "name": "txRef",
+              "value": "={{ $json.data.tx_ref }}"
+            },
+            {
+              "name": "amount",
+              "value": "={{ $json.data.amount }}"
+            },
+            {
+              "name": "currency",
+              "value": "={{ $json.data.currency }}"
+            },
+            {
+              "name": "status",
+              "value": "={{ $json.data.status }}"
+            },
+            {
+              "name": "customerEmail",
+              "value": "={{ $json.data.customer.email }}"
+            },
+            {
+              "name": "customerName",
+              "value": "={{ $json.data.customer.name }}"
+            },
+            {
+              "name": "paymentMethod",
+              "value": "={{ $json.data.payment_type }}"
+            },
+            {
+              "name": "userId",
+              "value": "={{ $json.data.meta.user_id }}"
+            },
+            {
+              "name": "subscriptionPlan",
+              "value": "={{ $json.data.meta.subscription_plan }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $json.data.created_at }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "pay2-extract-payment-data",
+      "name": "Extract Payment Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "https://api.flutterwave.com/v3/transactions/{{ $json.transactionId }}/verify",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.FLUTTERWAVE_SECRET_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "pay3-verify-payment",
+      "name": "Verify Payment with Flutterwave",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.data.status }}",
+              "value2": "successful"
+            },
+            {
+              "value1": "={{ $json.status }}",
+              "value2": "success"
+            }
+          ]
+        },
+        "combineOperation": "all"
+      },
+      "id": "pay4-validate-payment",
+      "name": "Validate Payment Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/payments",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "={{ $randomString(16) }}"
+            },
+            {
+              "name": "user_id",
+              "value": "={{ $('Extract Payment Data').item.json.userId }}"
+            },
+            {
+              "name": "transaction_id",
+              "value": "={{ $('Extract Payment Data').item.json.transactionId }}"
+            },
+            {
+              "name": "tx_ref",
+              "value": "={{ $('Extract Payment Data').item.json.txRef }}"
+            },
+            {
+              "name": "amount",
+              "value": "={{ parseFloat($('Extract Payment Data').item.json.amount) }}"
+            },
+            {
+              "name": "currency",
+              "value": "{{ $('Extract Payment Data').item.json.currency }}"
+            },
+            {
+              "name": "status",
+              "value": "{{ $json.data.status }}"
+            },
+            {
+              "name": "payment_method",
+              "value": "{{ $('Extract Payment Data').item.json.paymentMethod }}"
+            },
+            {
+              "name": "subscription_plan",
+              "value": "{{ $('Extract Payment Data').item.json.subscriptionPlan }}"
+            },
+            {
+              "name": "metadata",
+              "value": "={{ JSON.stringify({ flw_response: $json.data, customer_info: $json.data.customer }) }}"
+            },
+            {
+              "name": "created_at",
+              "value": "={{ $('Extract Payment Data').item.json.timestamp }}"
+            },
+            {
+              "name": "verified_at",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "pay5-record-payment",
+      "name": "Record Payment in Database",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "subscriptionTier",
+              "value": "={{ $('Extract Payment Data').item.json.subscriptionPlan }}"
+            },
+            {
+              "name": "subscriptionLimits",
+              "value": "={% set plan = $('Extract Payment Data').item.json.subscriptionPlan %}\n{% if plan === 'basic' %}\n{{ JSON.stringify({ documents_per_day: 5, emergency_contacts: 3, lawyer_consultations_per_month: 1, ai_interactions_per_day: 50, features: ['basic_documents', 'emergency_detection', 'whatsapp_support'] }) }}\n{% elif plan === 'premium' %}\n{{ JSON.stringify({ documents_per_day: 25, emergency_contacts: 10, lawyer_consultations_per_month: 5, ai_interactions_per_day: 200, features: ['all_documents', 'emergency_detection', 'priority_support', 'template_customization', 'multi_language'] }) }}\n{% elif plan === 'enterprise' %}\n{{ JSON.stringify({ documents_per_day: -1, emergency_contacts: -1, lawyer_consultations_per_month: -1, ai_interactions_per_day: -1, features: ['unlimited_access', 'custom_templates', 'api_access', 'dedicated_support', 'white_label'] }) }}\n{% else %}\n{{ JSON.stringify({ documents_per_day: 2, emergency_contacts: 1, lawyer_consultations_per_month: 0, ai_interactions_per_day: 10, features: ['basic_documents'] }) }}\n{% endif %}"
+            },
+            {
+              "name": "subscriptionStartDate",
+              "value": "={{ new Date().toISOString() }}"
+            },
+            {
+              "name": "subscriptionEndDate",
+              "value": "={% set plan = $('Extract Payment Data').item.json.subscriptionPlan %}\n{% if plan === 'basic' or plan === 'premium' or plan === 'enterprise' %}\n{{ new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString() }}\n{% else %}\n{{ new Date(new Date().setDate(new Date().getDate() + 30)).toISOString() }}\n{% endif %}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "pay6-calculate-subscription-details",
+      "name": "Calculate Subscription Details",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/users?id=eq.{{ $('Extract Payment Data').item.json.userId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "subscription_tier",
+              "value": "{{ $json.subscriptionTier }}"
+            },
+            {
+              "name": "subscription_start_date",
+              "value": "{{ $json.subscriptionStartDate }}"
+            },
+            {
+              "name": "subscription_end_date",
+              "value": "{{ $json.subscriptionEndDate }}"
+            },
+            {
+              "name": "subscription_limits",
+              "value": "{{ $json.subscriptionLimits }}"
+            },
+            {
+              "name": "is_premium",
+              "value": "={{ $json.subscriptionTier !== 'free' }}"
+            },
+            {
+              "name": "last_payment_date",
+              "value": "={{ $('Extract Payment Data').item.json.timestamp }}"
+            },
+            {
+              "name": "last_payment_amount",
+              "value": "={{ parseFloat($('Extract Payment Data').item.json.amount) }}"
+            },
+            {
+              "name": "documents_generated_today",
+              "value": 0
+            },
+            {
+              "name": "updated_at",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "pay7-update-user-subscription",
+      "name": "Update User Subscription",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1560,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/users?id=eq.{{ $('Extract Payment Data').item.json.userId }}&select=full_name,email,phone,preferred_language",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "pay8-get-user-details",
+      "name": "Get User Details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1780,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "confirmationMessage",
+              "value": "={% set plan = $('Extract Payment Data').item.json.subscriptionPlan %}\n{% set language = $json[0].preferred_language %}\n{% if language === 'yoruba' %}\n💳 ISANWO TI PARI!\n\nErupe o! Isanwo yin ti bori.\n\nAlaye Isanwo:\n• Iye: ₦{{ $('Extract Payment Data').item.json.amount }}\n• Eto: {{ plan === 'basic' ? 'Ipilẹ' : plan === 'premium' ? 'Giga' : plan === 'enterprise' ? 'Ile-iṣẹ' : 'Tuntun' }}\n• Ọjọ bẹrẹ: {{ new Date().toLocaleDateString('yo-NG') }}\n• Ọjọ ipari: {{ new Date($('Calculate Subscription Details').item.json.subscriptionEndDate).toLocaleDateString('yo-NG') }}\n\nAwọn anfani tuntun:\n{{ plan === 'basic' ? '• 5 iwe lojoojumọ\n• 3 olubasọrọ ipajawiri\n• 1 igbimọ agbẹjọro loṣu' : plan === 'premium' ? '• 25 iwe lojoojumọ\n• 10 olubasọrọ ipajawiri\n• 5 igbimọ agbẹjọro loṣu\n• Atilẹwa iwe' : '• Iwe ailopin\n• Igbimọ ailopin\n• API iwọle' }}\n\nMISS Legal AI\n{% elif language === 'hausa' %}\n💳 AN GAMA BIYAN KUƊI!\n\nBarka da nasara! Biyan kuɗin ku ya yi nasara.\n\nBayanan Biyan Kuɗi:\n• Adadin: ₦{{ $('Extract Payment Data').item.json.amount }}\n• Tsari: {{ plan === 'basic' ? 'Na Asali' : plan === 'premium' ? 'Mai Girma' : plan === 'enterprise' ? 'Kasuwanci' : 'Sabon' }}\n• Ranar Farawa: {{ new Date().toLocaleDateString('ha-NG') }}\n• Ranar Ƙarewa: {{ new Date($('Calculate Subscription Details').item.json.subscriptionEndDate).toLocaleDateString('ha-NG') }}\n\nSabbin Fa'idodi:\n{{ plan === 'basic' ? '• Takardu 5 kowace rana\n• Lambobin gaggawa 3\n• Shawarwari 1 kowane wata' : plan === 'premium' ? '• Takardu 25 kowace rana\n• Lambobin gaggawa 10\n• Shawarwari 5 kowane wata\n• Gyaran takardu' : '• Takardu marasa iyaka\n• Shawarwari marasa iyaka\n• Damar API' }}\n\nMISS Legal AI\n{% elif language === 'igbo' %}\n💳 ỤGWỌ AGWỤCHAALA!\n\nEkele! Ụgwọ gị emeela nke ọma.\n\nNkọwa Ụgwọ:\n• Ego: ₦{{ $('Extract Payment Data').item.json.amount }}\n• Atụmatụ: {{ plan === 'basic' ? 'Nke Mbụ' : plan === 'premium' ? 'Dị Elu' : plan === 'enterprise' ? 'Azụmahịa' : 'Ọhụrụ' }}\n• Ụbọchị Mmalite: {{ new Date().toLocaleDateString('ig-NG') }}\n• Ụbọchị Njedebe: {{ new Date($('Calculate Subscription Details').item.json.subscriptionEndDate).toLocaleDateString('ig-NG') }}\n\nUru Ọhụrụ:\n{{ plan === 'basic' ? '• Akwụkwọ 5 kwa ụbọchị\n• Ndị enyemaka 3\n• Ndụmọdụ 1 kwa ọnwa' : plan === 'premium' ? '• Akwụkwọ 25 kwa ụbọchị\n• Ndị enyemaka 10\n• Ndụmọdụ 5 kwa ọnwa\n• Nhazi akwụkwọ' : '• Akwụkwọ na-enweghị oke\n• Ndụmọdụ na-enweghị oke\n• Ohere API' }}\n\nMISS Legal AI\n{% else %}\n💳 PAYMENT SUCCESSFUL!\n\nCongratulations! Your payment has been processed successfully.\n\nPayment Details:\n• Amount: ₦{{ $('Extract Payment Data').item.json.amount }}\n• Plan: {{ plan === 'basic' ? 'Basic Plan' : plan === 'premium' ? 'Premium Plan' : plan === 'enterprise' ? 'Enterprise Plan' : 'New Plan' }}\n• Start Date: {{ new Date().toLocaleDateString('en-NG') }}\n• End Date: {{ new Date($('Calculate Subscription Details').item.json.subscriptionEndDate).toLocaleDateString('en-NG') }}\n\nNew Features Unlocked:\n{{ plan === 'basic' ? '• 5 documents per day\n• 3 emergency contacts\n• 1 lawyer consultation per month\n• WhatsApp support' : plan === 'premium' ? '• 25 documents per day\n• 10 emergency contacts\n• 5 lawyer consultations per month\n• Template customization\n• Priority support' : '• Unlimited documents\n• Unlimited consultations\n• API access\n• Custom branding' }}\n\nTransaction ID: {{ $('Extract Payment Data').item.json.transactionId }}\n\nMISS Legal AI\n{% endif %}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "pay9-prepare-confirmation",
+      "name": "Prepare Payment Confirmation",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "https://graph.facebook.com/v18.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.WHATSAPP_ACCESS_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "messaging_product",
+              "value": "whatsapp"
+            },
+            {
+              "name": "to",
+              "value": "={{ $('Get User Details').item.json[0].phone.replace(/[^0-9]/g, '') }}"
+            },
+            {
+              "name": "type",
+              "value": "text"
+            },
+            {
+              "name": "text",
+              "value": "={ \"body\": \"{{ $json.confirmationMessage }}\" }"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "pay10-send-whatsapp-confirmation",
+      "name": "Send WhatsApp Confirmation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2220,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "subject": "Payment Confirmation - MISS Legal AI {{ $('Extract Payment Data').item.json.subscriptionPlan }} Plan",
+        "message": "Dear {{ $('Get User Details').item.json[0].full_name }},\n\nThank you for your payment! Your MISS Legal AI subscription has been successfully upgraded.\n\nPayment Details:\n- Amount: ₦{{ $('Extract Payment Data').item.json.amount }}\n- Plan: {{ $('Extract Payment Data').item.json.subscriptionPlan }} Plan\n- Transaction ID: {{ $('Extract Payment Data').item.json.transactionId }}\n- Payment Method: {{ $('Extract Payment Data').item.json.paymentMethod }}\n- Date: {{ new Date($('Extract Payment Data').item.json.timestamp).toLocaleDateString('en-NG') }}\n\nSubscription Details:\n- Start Date: {{ new Date().toLocaleDateString('en-NG') }}\n- End Date: {{ new Date($('Calculate Subscription Details').item.json.subscriptionEndDate).toLocaleDateString('en-NG') }}\n- Status: Active\n\nYour account has been updated with your new subscription benefits. You can now access all premium features through your dashboard.\n\nIf you have any questions or concerns, please contact our support team at support@misslegai.com\n\nBest regards,\nThe MISS Legal AI Team\n\n---\nThis is an automated message. Please do not reply to this email.",
+        "fromEmail": "billing@misslegai.com",
+        "fromName": "MISS Legal AI Billing",
+        "toEmail": "={{ $('Get User Details').item.json[0].email }}",
+        "options": {
+          "attachments": "",
+          "ccEmail": "accounting@misslegai.com",
+          "bccEmail": "",
+          "replyTo": "support@misslegai.com"
+        }
+      },
+      "id": "pay11-send-email-confirmation",
+      "name": "Send Email Confirmation",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        2220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 25
+            }
+          ]
+        }
+      },
+      "id": "pay12-schedule-renewal-reminder",
+      "name": "Schedule Renewal Reminder",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        2440,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/payment_analytics",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{ $('Extract Payment Data').item.json.userId }}"
+            },
+            {
+              "name": "payment_id",
+              "value": "={{ $('Record Payment in Database').item.json.id }}"
+            },
+            {
+              "name": "transaction_id",
+              "value": "={{ $('Extract Payment Data').item.json.transactionId }}"
+            },
+            {
+              "name": "amount",
+              "value": "={{ parseFloat($('Extract Payment Data').item.json.amount) }}"
+            },
+            {
+              "name": "currency",
+              "value": "{{ $('Extract Payment Data').item.json.currency }}"
+            },
+            {
+              "name": "subscription_plan",
+              "value": "{{ $('Extract Payment Data').item.json.subscriptionPlan }}"
+            },
+            {
+              "name": "payment_method",
+              "value": "{{ $('Extract Payment Data').item.json.paymentMethod }}"
+            },
+            {
+              "name": "revenue_category",
+              "value": "subscription"
+            },
+            {
+              "name": "is_upgrade",
+              "value": true
+            },
+            {
+              "name": "previous_plan",
+              "value": "free"
+            },
+            {
+              "name": "created_at",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "pay13-log-revenue-analytics",
+      "name": "Log Revenue Analytics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2660,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/payments",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "={{ $randomString(16) }}"
+            },
+            {
+              "name": "user_id",
+              "value": "={{ $('Extract Payment Data').item.json.userId }}"
+            },
+            {
+              "name": "transaction_id",
+              "value": "={{ $('Extract Payment Data').item.json.transactionId }}"
+            },
+            {
+              "name": "tx_ref",
+              "value": "={{ $('Extract Payment Data').item.json.txRef }}"
+            },
+            {
+              "name": "amount",
+              "value": "={{ parseFloat($('Extract Payment Data').item.json.amount) }}"
+            },
+            {
+              "name": "currency",
+              "value": "{{ $('Extract Payment Data').item.json.currency }}"
+            },
+            {
+              "name": "status",
+              "value": "failed"
+            },
+            {
+              "name": "payment_method",
+              "value": "{{ $('Extract Payment Data').item.json.paymentMethod }}"
+            },
+            {
+              "name": "failure_reason",
+              "value": "{{ $json.data.processor_response || 'Payment verification failed' }}"
+            },
+            {
+              "name": "metadata",
+              "value": "={{ JSON.stringify({ flw_response: $json.data, verification_failed: true }) }}"
+            },
+            {
+              "name": "created_at",
+              "value": "={{ $('Extract Payment Data').item.json.timestamp }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "pay14-record-failed-payment",
+      "name": "Record Failed Payment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.BACKEND_API_URL }}/api/payment/retry-payment",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.BACKEND_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "userId",
+              "value": "={{ $('Extract Payment Data').item.json.userId }}"
+            },
+            {
+              "name": "failedTransactionId",
+              "value": "={{ $('Extract Payment Data').item.json.transactionId }}"
+            },
+            {
+              "name": "subscriptionPlan",
+              "value": "={{ $('Extract Payment Data').item.json.subscriptionPlan }}"
+            },
+            {
+              "name": "amount",
+              "value": "={{ $('Extract Payment Data').item.json.amount }}"
+            },
+            {
+              "name": "retryReason",
+              "value": "payment_verification_failed"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "pay15-initiate-payment-retry",
+      "name": "Initiate Payment Retry",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1340,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: true,\n  paymentStatus: 'confirmed',\n  transactionId: $('Extract Payment Data').item.json.transactionId,\n  subscriptionPlan: $('Extract Payment Data').item.json.subscriptionPlan,\n  subscriptionStartDate: $('Calculate Subscription Details').item.json.subscriptionStartDate,\n  subscriptionEndDate: $('Calculate Subscription Details').item.json.subscriptionEndDate,\n  newLimits: JSON.parse($('Calculate Subscription Details').item.json.subscriptionLimits),\n  message: 'Payment successful and subscription updated'\n}) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "pay16-success-response",
+      "name": "Payment Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2880,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: false,\n  paymentStatus: 'failed',\n  transactionId: $('Extract Payment Data').item.json.transactionId,\n  error: 'Payment verification failed',\n  retryInitiated: true,\n  message: 'Payment failed, retry has been initiated'\n}) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "pay17-failure-response",
+      "name": "Payment Failure Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Flutterwave Payment Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Payment Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Payment Data": {
+      "main": [
+        [
+          {
+            "node": "Verify Payment with Flutterwave",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Payment with Flutterwave": {
+      "main": [
+        [
+          {
+            "node": "Validate Payment Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Payment Success": {
+      "main": [
+        [
+          {
+            "node": "Record Payment in Database",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record Failed Payment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Payment in Database": {
+      "main": [
+        [
+          {
+            "node": "Calculate Subscription Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Subscription Details": {
+      "main": [
+        [
+          {
+            "node": "Update User Subscription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update User Subscription": {
+      "main": [
+        [
+          {
+            "node": "Get User Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get User Details": {
+      "main": [
+        [
+          {
+            "node": "Prepare Payment Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Payment Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Confirmation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Email Confirmation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Revenue Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Revenue Analytics": {
+      "main": [
+        [
+          {
+            "node": "Payment Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Failed Payment": {
+      "main": [
+        [
+          {
+            "node": "Initiate Payment Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initiate Payment Retry": {
+      "main": [
+        [
+          {
+            "node": "Payment Failure Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "1",
+  "meta": {
+    "instanceId": "payment-callback-nigeria"
+  },
+  "id": "miss-legal-ai-payment-processing",
+  "tags": [
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "payment-processing",
+      "name": "Payment Processing"
+    },
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "subscription-management",
+      "name": "Subscription Management"
+    },
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "miss-legal-ai",
+      "name": "MISS Legal AI"
+    }
+  ]
+}

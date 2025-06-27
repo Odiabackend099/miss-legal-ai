@@ -1,0 +1,503 @@
+{
+  "name": "MISS Legal AI - User Onboarding & Registration",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "user-onboarding",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "e9b1c7a4-8f2d-4a3b-9c5e-1d6f7a8b9c0d",
+      "name": "Webhook - User Registration",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "voice-crm-nigeria"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "userId",
+              "value": "={{ $json.user_id }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "fullName",
+              "value": "={{ $json.full_name }}"
+            },
+            {
+              "name": "phone",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "preferredLanguage",
+              "value": "={{ $json.preferred_language || 'english' }}"
+            },
+            {
+              "name": "ndprConsent",
+              "value": "={{ $json.ndpr_consent }}"
+            },
+            {
+              "name": "registrationSource",
+              "value": "={{ $json.registration_source || 'direct' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+      "name": "Extract User Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/users",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "={{ $json.userId }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "full_name",
+              "value": "={{ $json.fullName }}"
+            },
+            {
+              "name": "phone",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "preferred_language",
+              "value": "={{ $json.preferredLanguage }}"
+            },
+            {
+              "name": "subscription_tier",
+              "value": "free"
+            },
+            {
+              "name": "ndpr_consent",
+              "value": "={{ $json.ndprConsent }}"
+            },
+            {
+              "name": "ndpr_consent_date",
+              "value": "={{ new Date().toISOString() }}"
+            },
+            {
+              "name": "is_active",
+              "value": true
+            },
+            {
+              "name": "created_at",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e",
+      "name": "Create User Record",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "subject": "Welcome to MISS Legal AI - {{ $json.preferredLanguage === 'yoruba' ? 'Kaabo' : $json.preferredLanguage === 'hausa' ? 'Barka da zuwa' : $json.preferredLanguage === 'igbo' ? 'Ndewo' : 'Welcome' }}",
+        "message": "={% if $json.preferredLanguage === 'yoruba' %}\nKaabo si MISS Legal AI!\n\nA wa ni idunnu lati gba o si agbegbe wa. MISS Legal AI jẹ oluranlowo onimọ-jinlẹ fun awọn ọrọ ofin ti Naijiria.\n\nOhun ti o le ṣe:\n• Ṣẹda awọn iwe ofin (Tenancy Agreement, Affidavit, Power of Attorney)\n• Gba iranlọwọ lati ọdọ awọn agbẹjọro ti o ni ẹjẹ\n• Ṣiṣọ kan pajawiri fun awọn ipade\n• Lo ẹya ipajawiri fun igbagbọ\n\nFun anfani rẹ, a ti pinnu pe iwọ yoo ni iwọle si eto Ọfẹ wa.\n\nBi o ba nilo iranlọwọ eyikeyi, kan si wa ni talk@misslegai.com\n\nPẹlu ifẹ,\nEgbẹ MISS Legal AI\n{% elif $json.preferredLanguage === 'hausa' %}\nBarka da zuwa MISS Legal AI!\n\nMuna farin ciki da maraba da kai a cikin al'ummarmu. MISS Legal AI shine mataimaki mai hankali don al'amuran shari'a na Najeriya.\n\nAbubuwan da za ka iya yi:\n• Ƙirƙirar takardun shari'a (Yarjejeniyar Haya, Affidavit, Power of Attorney)\n• Neman taimako daga ƙwararrun lauyoyi\n• Shirya taron shawarwari\n• Amfani da fasalin murya don gaggawa\n\nDon amfanarku, mun saita ku da damar shiga tsarin Kyauta.\n\nIdan kuna buƙatar taimako, tuntuɓe mu a talk@misslegai.com\n\nDa ƙauna,\nƘungiyar MISS Legal AI\n{% elif $json.preferredLanguage === 'igbo' %}\nNdewo na MISS Legal AI!\n\nAnyị nwere obi ụtọ ịnabata gị na obodo anyị. MISS Legal AI bụ onye inyeaka ọgụgụ isi maka okwu iwu nke Naịjirịa.\n\nIhe ị nwere ike ime:\n• Mepụta akwụkwọ iwu (Nkwekọrịta Mgbazinye, Affidavit, Power of Attorney)\n• Nweta enyemaka site n'aka ndị ọka iwu nwere ọzụzụ\n• Hazie mkparịta ụka ndụmọdụ\n• Jiri njirimara olu maka ihe mberede\n\nMaka uru gị, anyị ewepụtala gị na usoro anyị nke efu.\n\nỌ bụrụ na ịchọrọ enyemaka ọ bụla, kpọtụrụ anyị na talk@misslegai.com\n\nJi ịhụnanya,\nOtu MISS Legal AI\n{% else %}\nWelcome to MISS Legal AI!\n\nWe're delighted to welcome you to our community. MISS Legal AI is your intelligent assistant for Nigerian legal matters.\n\nWhat you can do:\n• Generate legal documents (Tenancy Agreements, Affidavits, Power of Attorney)\n• Get assistance from qualified Nigerian lawyers\n• Schedule legal consultations\n• Use voice features for emergency situations\n\nFor your convenience, we've set you up with access to our Free plan.\n\nImportant: This service complies with Nigeria's NDPR (Nigeria Data Protection Regulation). Your data is protected and will only be used to provide legal services as outlined in our privacy policy.\n\nIf you need any assistance, contact us at talk@misslegai.com\n\nWith regards,\nThe MISS Legal AI Team\n{% endif %}",
+        "fromEmail": "noreply@misslegai.com",
+        "fromName": "MISS Legal AI",
+        "toEmail": "={{ $json.email }}",
+        "options": {
+          "attachments": "",
+          "ccEmail": "",
+          "bccEmail": "",
+          "replyTo": "support@misslegai.com"
+        }
+      },
+      "id": "c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f",
+      "name": "Send Welcome Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        900,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "https://graph.facebook.com/v18.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.WHATSAPP_ACCESS_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "messaging_product",
+              "value": "whatsapp"
+            },
+            {
+              "name": "to",
+              "value": "={{ $json.phone.replace(/[^0-9]/g, '') }}"
+            },
+            {
+              "name": "type",
+              "value": "text"
+            },
+            {
+              "name": "text",
+              "value": "={ \"body\": \"{{ $json.preferredLanguage === 'yoruba' ? 'Kaabo si MISS Legal AI! O ti di ara eto wa.' : $json.preferredLanguage === 'hausa' ? 'Barka da zuwa MISS Legal AI! An riga an yi rajista.' : $json.preferredLanguage === 'igbo' ? 'Ndewo na MISS Legal AI! E debanye aha gi ugbu a.' : 'Welcome to MISS Legal AI! Your account has been successfully created. You can now access legal document generation, emergency assistance, and connect with qualified Nigerian lawyers. Type HELP for assistance.' }}\" }"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d4e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a",
+      "name": "Send WhatsApp Welcome",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        900,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.SUPABASE_URL }}/rest/v1/user_analytics",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "{{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{ $json.userId }}"
+            },
+            {
+              "name": "event_type",
+              "value": "user_registration"
+            },
+            {
+              "name": "event_data",
+              "value": "={{ JSON.stringify({ source: $json.registrationSource, language: $json.preferredLanguage, timestamp: new Date().toISOString() }) }}"
+            },
+            {
+              "name": "created_at",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e5f6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b",
+      "name": "Track Registration Analytics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "{{ $env.BACKEND_API_URL }}/api/auth/setup-defaults",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.BACKEND_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "userId",
+              "value": "={{ $json.userId }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $json.preferredLanguage }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f6a7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c",
+      "name": "Setup Default Settings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1340,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.email }}",
+              "operation": "isNotEmpty"
+            },
+            {
+              "value1": "={{ $json.fullName }}",
+              "operation": "isNotEmpty"
+            },
+            {
+              "value1": "={{ $json.ndprConsent }}",
+              "value2": "true"
+            }
+          ]
+        },
+        "combineOperation": "all"
+      },
+      "id": "a7b8c9d0-1e2f-3a4b-5c6d-7e8f9a0b1c2d",
+      "name": "Validate Required Data",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        460,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'User onboarded successfully', userId: $json.userId, language: $json.preferredLanguage }) }}",
+        "options": {
+          "responseCode": 201
+        }
+      },
+      "id": "b8c9d0e1-2f3a-4b5c-6d7e-8f9a0b1c2d3e",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, error: 'Invalid registration data. Please ensure all required fields are provided and NDPR consent is given.' }) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "c9d0e1f2-3a4b-5c6d-7e8f-9a0b1c2d3e4f",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        680,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "continue",
+        "output": "main"
+      },
+      "id": "d0e1f2a3-4b5c-6d7e-8f9a-0b1c2d3e4f5a",
+      "name": "Continue On Error",
+      "type": "n8n-nodes-base.sticky",
+      "typeVersion": 1,
+      "position": [
+        900,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook - User Registration": {
+      "main": [
+        [
+          {
+            "node": "Extract User Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract User Data": {
+      "main": [
+        [
+          {
+            "node": "Validate Required Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Required Data": {
+      "main": [
+        [
+          {
+            "node": "Create User Record",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create User Record": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome Email",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send WhatsApp Welcome",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Track Registration Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Track Registration Analytics": {
+      "main": [
+        [
+          {
+            "node": "Setup Default Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Setup Default Settings": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "instanceId": "voice-crm-nigeria"
+  },
+  "id": "miss-legal-ai-user-onboarding",
+  "tags": [
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "onboarding",
+      "name": "User Onboarding"
+    },
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "miss-legal-ai",
+      "name": "MISS Legal AI"
+    }
+  ]
+}
